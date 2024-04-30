@@ -9,11 +9,11 @@
 
 namespace reimu {
 
-struct OSError {
+struct OSError : public ErrorBase {
     OSError(int e)
         : err_no(e) {}
 
-    std::string as_string() const {
+    std::string as_string() const override {
         return std::format("OSError ({}): {}", err_no, strerror(err_no));
     }
 

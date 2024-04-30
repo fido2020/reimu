@@ -1,6 +1,7 @@
 #pragma once
 
 #include <reimu/core/error.h>
+#include <reimu/core/logger.h>
 
 #include <utility>
 
@@ -32,6 +33,14 @@ public:
 
     inline bool is_err() const {
         return m_is_err;
+    }
+
+    inline T &&ok_or_fatal() {
+        if (m_is_err) {
+            logger::fatal("ok_or_fatal: {}", m_err.as_string());
+        }
+
+        return move_val();
     }
 
     inline E &&move_err() {
@@ -90,6 +99,6 @@ private:
 
 }
 
-#define OK(x) { std::move(x) }
+#define OK(...) { __VA_ARGS__ }
 #define ERR(x) { std::move(x), {} }
 #define TRY(x) { auto v = x; if (v.is_err()) return v; v.move_data() }

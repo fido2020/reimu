@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <sys/socket.h>
 
+#include "gpu.h"
+
 int main() {
     const char *sessionId = getenv("REIMU_SESSION");
     if (!sessionId) {
@@ -28,8 +30,6 @@ int main() {
         socket_name = "wm";
     }
 
-    puts(std::format("opening display server at {}", server_path).c_str());
-
     auto res = reimu::os::make_path(server_path, 0755);
     if (res.is_err()) {
         puts(std::format("make_path: {}", res.move_err()).c_str());
@@ -37,6 +37,9 @@ int main() {
     }
 
     std::string socket_path = server_path + socket_name;
+
+    puts(std::format("opening display server at {}", socket_path).c_str());
+    
     int socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (socket_fd < 0) {
         perror("socket");
@@ -53,6 +56,8 @@ int main() {
         printf("Failed to add socket fd to display");
         return 1;
     }
+
+    GPU *gpu = GPU::open_first_gpu().ok_or_fatal();
 
     return 0;
 }

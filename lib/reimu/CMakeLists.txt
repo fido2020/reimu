@@ -11,3 +11,5 @@ target_include_directories(reimu PUBLIC
 )
 
 add_subdirectory(os/unix)
+
+add_subdirectory(tests)

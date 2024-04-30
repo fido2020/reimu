@@ -7,9 +7,13 @@
 
 namespace reimu::os {
 
-Result<int, OSError> make_path(const std::string &path, int mode) {
+Result<void, OSError> make_path(const std::string &path, int mode) {
     int e = mkdir(path.c_str(), mode);
     if (e == -1) {
+        if (errno == EEXIST) {
+            return OK();
+        }
+
         if (errno == ENOENT) {
             std::string_view parent = path;
 
@@ -31,7 +35,7 @@ Result<int, OSError> make_path(const std::string &path, int mode) {
         return ERR(errno);
     }
 
-    return OK(0);
+    return OK();
 }
 
 }
