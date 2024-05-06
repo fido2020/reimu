@@ -57,7 +57,7 @@ int main() {
         return 1;
     }
 
-    GPU *gpu = GPU::open_first_gpu().ok_or_fatal();
+    GPU *gpu = GPU::open_first_gpu().ensure();
 
     return 0;
 }

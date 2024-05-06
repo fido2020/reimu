@@ -1,6 +1,10 @@
 #pragma once
 
+#include <reimu/core/util.h>
+
 #include <cmath>
+
+namespace reimu {
 
 template <typename T> struct Vector2 {
     T x;
@@ -105,3 +109,5 @@ using Vector3u = Vector3<unsigned int>;
 using Vector4f = Vector4<float>;
 using Vector4i = Vector4<int>;
 using Vector4u = Vector4<unsigned int>;
+
+}

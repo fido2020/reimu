@@ -62,6 +62,16 @@ private:
     std::unique_ptr<ErrorBase> m_storage;
 };
 
+struct ReimuError {
+    enum {
+        WindowCreationFailed = 0x1000
+    } code;
+
+    std::string as_string() const {
+        return std::format("Error: {:x}", (int)code);
+    }
+};
+
 }
 
 template<reimu::Error E>
@@ -75,3 +85,10 @@ struct std::formatter<E> {
         return std::format_to(ctx.out(), "{}", error.as_string());
     }
 };
+
+#define DEF_SIMPLE_ERROR(name, msg) \
+    struct name : public reimu::ErrorBase { \
+        std::string as_string() const override { \
+            return msg; \
+        }; \
+    };

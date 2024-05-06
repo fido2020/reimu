@@ -21,7 +21,7 @@ void warn(std::format_string<Args...> f, Args&&... args){
 }
 
 template<typename ...Args>
-void fatal(std::format_string<Args...> f, Args&&... args){
+[[noreturn ]] void fatal(std::format_string<Args...> f, Args&&... args){
     fprintf(stderr, "[reimu] fatal: %s\n",
         std::vformat(f.get(), std::make_format_args(args...)).c_str());
 

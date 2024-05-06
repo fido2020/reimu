@@ -43,7 +43,7 @@ public:
 
 int Error3::instance_count = 0;
 
-reimu::Result<int, reimu::ErrorBox<Error1, Error2, Error3>> returns_an_error() {
+reimu::Result<int, reimu::ErrorBox> returns_an_error() {
     return ERR(Error3{});
 }
 

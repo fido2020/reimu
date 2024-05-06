@@ -19,7 +19,7 @@ class DRMError : public reimu::ErrorBase {
 
 class GPU {
 public:
-    static Result<GPU*, reimu::ErrorBox<DRMError, reimu::OSError>> open_first_gpu() {
+    static Result<GPU*, reimu::ErrorBox> open_first_gpu() {
         int card_num = 0;
         int card;
 

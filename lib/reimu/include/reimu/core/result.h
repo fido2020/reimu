@@ -35,9 +35,9 @@ public:
         return m_is_err;
     }
 
-    inline T &&ok_or_fatal() {
+    inline T &&ensure() {
         if (m_is_err) {
-            logger::fatal("ok_or_fatal: {}", m_err.as_string());
+            logger::fatal("Unexpected error value: {}", m_err.as_string());
         }
 
         return move_val();
@@ -99,6 +99,6 @@ private:
 
 }
 
-#define OK(...) { __VA_ARGS__ }
+#define OK(...) { __VA_OPT__(std::move(__VA_ARGS__)) }
 #define ERR(x) { std::move(x), {} }
 #define TRY(x) ({ auto v = (x); if (v.is_err()) return v; v.move_val(); })
