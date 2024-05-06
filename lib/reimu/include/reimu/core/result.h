@@ -101,4 +101,4 @@ private:
 
 #define OK(...) { __VA_ARGS__ }
 #define ERR(x) { std::move(x), {} }
-#define TRY(x) { auto v = x; if (v.is_err()) return v; v.move_data() }
+#define TRY(x) ({ auto v = (x); if (v.is_err()) return v; v.move_val(); })

@@ -41,7 +41,6 @@ public:
 
 // Allows multiple errors derived from this to be returned in one result,
 // far from efficient
-template<typename ...T>
 class ErrorBox {
 public:
     ErrorBox(const ErrorBox&) = delete;
