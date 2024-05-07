@@ -46,9 +46,7 @@ public:
 
             win->set_title(m_title);
 
-            if (m_has_pos) {
-                win->set_pos(m_pos);
-            }
+            return OK(win);
         }
 
     private:
@@ -70,11 +68,9 @@ public:
     virtual ~Window();
 
     virtual void set_size(const Vector2i &size) = 0;
-    virtual void set_pos(const Vector2i &pos) = 0;
     virtual void set_title(const std::string &title) = 0;
 
-    virtual Vector2u get_size() const = 0;
-    virtual Vector2u get_pos() const = 0;
+    virtual Vector2i get_size() const = 0;
 
     virtual void show_window() = 0;
     virtual void hide_window() = 0;

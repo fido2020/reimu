@@ -15,10 +15,12 @@ Result<EGLInstance *, ErrorBox> EGLInstance::create(EGLNativeDisplayType display
     }
 
     EGLint egl_minor, egl_major;
+
+    // Request an OpenGL ES2 surface with at least 8 bits per color
     const EGLint egl_attrib_list[] = {
-        EGL_RED_SIZE, 1,
-        EGL_GREEN_SIZE, 1,
-        EGL_BLUE_SIZE, 1,
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_NONE

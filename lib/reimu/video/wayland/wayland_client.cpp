@@ -11,8 +11,7 @@
 #include "../driver.h"
 #include "../egl/egl.h"
 
-#include <GLES2/gl2.h>
-
+#include "driver.h"
 #include "window.h"
 #include "xdg-shell-client-protocol.h"
 
@@ -53,82 +52,56 @@ static const xdg_toplevel_listener toplevel_listener = {
     .wm_capabilities = xdg_toplevel_wm_capabilities
 };
 
-class WaylandDriver : public reimu::video::Driver {
-public:
-    reimu::video::Window *window_create(const reimu::Vector2i &size) override {  
-        wl_surface *surface = wl_compositor_create_surface(compositor);
-        if (!surface) {
-            reimu::logger::fatal("Failed to create surface");
-        }
-
-        xdg_surface *xdg_surface = xdg_wm_base_get_xdg_surface(wm_base, surface);
-        if (!xdg_surface) {
-            reimu::logger::fatal("Failed to create xdg surface");
-        }
-
-        // An XDG 'toplevel' describes a normal window, as opposed to a transient window
-        xdg_toplevel *xdg_toplevel = xdg_surface_get_toplevel(xdg_surface);
-        if (!xdg_toplevel) {
-            reimu::logger::fatal("Failed to get XDG toplevel");
-        }
-
-        wl_egl_window *egl_window = wl_egl_window_create(surface, size.x, size.y);
-        if (!egl_window) {
-            reimu::logger::fatal("Failed to create EGL window");
-        }
-
-        EGLSurface egl_surface = egl->create_surface(egl_window).ensure();
-        assert(egl_surface != EGL_NO_SURFACE);
-
-        wl_surface_commit(surface);
-
-        if(eglMakeCurrent(egl->get_display(), egl_surface, egl_surface, egl->get_context()) != EGL_TRUE) {
-            reimu::logger::fatal("Couldn't make EGL context current {}", eglGetError());
-        }
-
-        eglSwapBuffers(egl->get_display(), egl_surface);
-
-        auto *win = new WaylandWindow {
-            surface,
-            xdg_surface,
-            xdg_toplevel,
-            egl_window,
-            egl_surface
-        };
-
-        xdg_surface_add_listener(xdg_surface, &surface_listener, win);
-        xdg_toplevel_add_listener(xdg_toplevel, &toplevel_listener, win);
-
-        while (wl_display_dispatch(display));
-
-        return nullptr;
+reimu::video::Window *WaylandDriver::window_create(const reimu::Vector2i &size) {  
+    wl_surface *surface = wl_compositor_create_surface(compositor);
+    if (!surface) {
+        reimu::logger::fatal("Failed to create surface");
     }
 
-    void finish() override {
-        if (egl) {
-            delete egl;
-        }
-
-        if (compositor) {
-            wl_compositor_destroy(compositor);
-        }
-
-        if (registry) {
-            wl_registry_destroy(registry);
-        }
-
-        if (display) {
-            wl_display_disconnect(display);
-        }
+    xdg_surface *xdg_surface = xdg_wm_base_get_xdg_surface(wm_base, surface);
+    if (!xdg_surface) {
+        reimu::logger::fatal("Failed to create xdg surface");
     }
 
-    wl_display *display = nullptr;
-    wl_registry *registry = nullptr;
-    wl_compositor *compositor = nullptr;
-    xdg_wm_base *wm_base = nullptr;
+    // An XDG 'toplevel' describes a normal window, as opposed to a transient window
+    xdg_toplevel *xdg_toplevel = xdg_surface_get_toplevel(xdg_surface);
+    if (!xdg_toplevel) {
+        reimu::logger::fatal("Failed to get XDG toplevel");
+    }
 
-    reimu::video::EGLInstance *egl = nullptr;
-};
+    wl_egl_window *egl_window = wl_egl_window_create(surface, size.x, size.y);
+    if (!egl_window) {
+        reimu::logger::fatal("Failed to create EGL window");
+    }
+
+    wl_surface_commit(surface);
+
+    auto *win = new WaylandWindow {
+        *this,
+        surface,
+        xdg_surface,
+        xdg_toplevel,
+    };
+
+    xdg_surface_add_listener(xdg_surface, &surface_listener, win);
+    xdg_toplevel_add_listener(xdg_toplevel, &toplevel_listener, win);
+
+    return win;
+}
+
+void WaylandDriver::finish() {
+    if (compositor) {
+        wl_compositor_destroy(compositor);
+    }
+
+    if (registry) {
+        wl_registry_destroy(registry);
+    }
+
+    if (display) {
+        wl_display_disconnect(display);
+    }
+}
 
 reimu::video::Driver *wayland_init() {
     WaylandDriver *d = new WaylandDriver;
@@ -169,8 +142,6 @@ reimu::video::Driver *wayland_init() {
 
         reimu::logger::fatal("Failed to create wayland bindings");
     }
-
-    d->egl = reimu::video::EGLInstance::create((EGLNativeDisplayType)display).ensure();
     
     return d;
 }
