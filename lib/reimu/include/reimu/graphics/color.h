@@ -1,8 +1,10 @@
 #pragma once
 
+#include <reimu/graphics/vector.h>
+
 #include <cstdint>
 
-#include "vector.h"
+namespace reimu {
 
 union Color final {
 	struct {
@@ -22,3 +24,5 @@ union Color final {
 		return { r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f };
 	}
 };
+
+}

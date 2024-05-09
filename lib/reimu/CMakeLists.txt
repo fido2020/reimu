@@ -18,8 +18,10 @@ target_include_directories(reimu PUBLIC
 target_link_libraries(reimu PUBLIC
     ${wayland_LIBRARIES}
     ${egl_LIBRARIES}
+    webgpu
 )
 
+add_subdirectory(graphics)
 add_subdirectory(video)
 
 add_subdirectory(os/unix)

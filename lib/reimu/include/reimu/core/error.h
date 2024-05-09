@@ -64,8 +64,12 @@ private:
 
 struct ReimuError {
     enum {
-        WindowCreationFailed = 0x1000
+        WindowCreationFailed = 0x1000,
+        NoSuitableRenderer = 0x2000,
+        RendererUnsupportedWindowBackend = 0x2001,
     } code;
+
+    ReimuError(decltype(code) code) : code(code) {}
 
     std::string as_string() const {
         return std::format("Error: {:x}", (int)code);

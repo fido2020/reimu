@@ -8,3 +8,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(lib/reimu)
 add_subdirectory(servers/wm)
 add_subdirectory(guitest)
+
+add_subdirectory(thirdparty/webgpu)

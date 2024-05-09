@@ -17,8 +17,8 @@ struct wl_egl_window;
 class WaylandWindow final : public reimu::video::Window {
 public:
     WaylandWindow(WaylandDriver &driver, wl_surface *surface, xdg_surface *xdg_surface,
-            xdg_toplevel *xdg_toplevel) : driver(driver), surface(surface),
-            xdg_surface(xdg_surface), xdg_toplevel(xdg_toplevel) {}
+            xdg_toplevel *xdg_toplevel, const reimu::Vector2i &size) : driver(driver),
+            surface(surface), xdg_surface(xdg_surface), xdg_toplevel(xdg_toplevel), size(size) {}
 
     void set_size(const reimu::Vector2i &size) override {
         this->size = size;
@@ -48,6 +48,22 @@ public:
         xdg_toplevel_set_minimized(xdg_toplevel);
     }
 
+    void sync_window() override {
+        driver.display_roundtrip();
+    }
+
+    reimu::Result<reimu::video::NativeWindowHandle *, reimu::ReimuError> get_native_handle()
+            override {
+        return OK(new reimu::video::NativeWindowHandle {
+                reimu::video::NativeHandleType::Wayland, {
+                .wayland = {
+                    .surface = surface,
+                    .display = driver.display
+                }
+            }
+        });
+    }
+
     WaylandDriver &driver;
 
     wl_surface *surface;
@@ -55,9 +71,4 @@ public:
     xdg_toplevel *xdg_toplevel;
 
     reimu::Vector2i size;
-
-private:
-    void sync_window() {
-        driver.display_roundtrip();
-    }
 };

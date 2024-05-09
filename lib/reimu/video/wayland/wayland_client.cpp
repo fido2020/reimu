@@ -69,11 +69,6 @@ reimu::video::Window *WaylandDriver::window_create(const reimu::Vector2i &size) 
         reimu::logger::fatal("Failed to get XDG toplevel");
     }
 
-    wl_egl_window *egl_window = wl_egl_window_create(surface, size.x, size.y);
-    if (!egl_window) {
-        reimu::logger::fatal("Failed to create EGL window");
-    }
-
     wl_surface_commit(surface);
 
     auto *win = new WaylandWindow {
@@ -81,6 +76,7 @@ reimu::video::Window *WaylandDriver::window_create(const reimu::Vector2i &size) 
         surface,
         xdg_surface,
         xdg_toplevel,
+        size
     };
 
     xdg_surface_add_listener(xdg_surface, &surface_listener, win);
