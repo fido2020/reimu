@@ -142,7 +142,7 @@ reimu::video::Driver *wayland_init() {
     return d;
 }
 
-static void xdg_ping(void *data, xdg_wm_base *wm_base, uint32_t serial) {
+static void xdg_ping(void *, xdg_wm_base *wm_base, uint32_t serial) {
     xdg_wm_base_pong(wm_base, serial);
 }
 
@@ -154,22 +154,22 @@ static void xdg_surface_configure(void *data, xdg_surface *surface, uint32_t ser
     wl_surface_commit(win->surface);
 }
 
-static void xdg_toplevel_configure(void *data, xdg_toplevel *toplevel, int32_t width,
-        int32_t height, struct wl_array *states) {
+static void xdg_toplevel_configure(void *, xdg_toplevel *, int32_t width,
+        int32_t height, struct wl_array *) {
     reimu::logger::debug("width: {}, height: {}", width, height);
 }
 
-static void xdg_toplevel_close(void *data, xdg_toplevel *toplevel) {
+static void xdg_toplevel_close(void *, xdg_toplevel *) {
     reimu::logger::debug("user wants to close window");
 }
 
-static void xdg_toplevel_configure_bounds(void *data, xdg_toplevel *xdg_toplevel,
+static void xdg_toplevel_configure_bounds(void *, xdg_toplevel *,
         int32_t width, int32_t height) {
     reimu::logger::debug("xdg_toplevel_configure_bounds: width: {}, height: {}", width, height);
 }
 
-static void xdg_toplevel_wm_capabilities(void *data, xdg_toplevel *xdg_toplevel,
-        wl_array *capabilities) {
+static void xdg_toplevel_wm_capabilities(void *, xdg_toplevel *,
+        wl_array *) {
     reimu::logger::debug("xdg_toplevel_wm_capabilities");
 }
 
@@ -189,6 +189,6 @@ static void registry_handler(void *data, struct wl_registry *registry, uint32_t 
     }
 }
 
-static void registry_remove_handler(void *data, struct wl_registry *registry, uint32_t name) {
+static void registry_remove_handler(void *, struct wl_registry *, uint32_t) {
 
 }

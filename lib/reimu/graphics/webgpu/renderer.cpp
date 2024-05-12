@@ -5,7 +5,10 @@
 #include <assert.h>
 #include <vector>
 
+#include "texture.h"
 #include "webgpu.h"
+
+#define SWAP_CHAIN_FORMAT WGPUTextureFormat_BGRA8Unorm
 
 namespace reimu::graphics {
 
@@ -108,7 +111,7 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
     swap_chain_desc.height = static_cast<uint32_t>(window->get_size().y);
 
     swap_chain_desc.usage = WGPUTextureUsage_RenderAttachment;
-    swap_chain_desc.format = WGPUTextureFormat_BGRA8Unorm;
+    swap_chain_desc.format = SWAP_CHAIN_FORMAT;
     swap_chain_desc.presentMode = WGPUPresentMode_Fifo;
 
     renderer->m_swap_chain = wgpuDeviceCreateSwapChain(device, renderer->m_surface, &swap_chain_desc);
@@ -118,6 +121,30 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
         delete renderer;
         return nullptr;
     }
+
+    // TODO: remove
+    renderer->load_shader("default", R"(
+        @vertex
+        fn vertex_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
+            var p = vec2f(0.0, 0.0);
+            if (in_vertex_index == 0u) {
+                p = vec2f(-0.5, -0.5);
+            } else if (in_vertex_index == 1u) {
+                p = vec2f(0.5, -0.5);
+            } else if (in_vertex_index == 2u) {
+                p = vec2f(-0.5, 0.5);
+            } else {
+                p = vec2f(0.5, 0.5);
+            }
+            return vec4f(p, 0.0, 1.0);
+        }
+
+        @fragment
+        fn fragment_main() -> @location(0) vec4f {
+            return vec4f(0.0, 0.4, 1.0, 1.0);
+        }
+    )").ensure();
+    renderer->create_render_pass(nullptr, 0).ensure();
 
     return renderer;
 }
@@ -156,39 +183,236 @@ void WebGPURenderer::render() {
         return;
     }
 
-    WGPUCommandEncoderDescriptor encoder_desc = {};
-    encoder_desc.label = "command encoder";
+    for (auto &pass : m_render_passes) {WGPUCommandEncoderDescriptor encoder_desc = {};
+        encoder_desc.label = "command encoder";
 
-    WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(m_device, &encoder_desc);
-    assert(encoder);
+        WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(m_device, &encoder_desc);
+        assert(encoder);
+        WGPURenderPassColorAttachment color_attachment = {};
+        color_attachment.view = texture_view;
+        color_attachment.loadOp = WGPULoadOp_Clear;
+        color_attachment.storeOp = WGPUStoreOp_Store;
+        color_attachment.clearValue = {1.0f, 0.5f, 0.0f, 1.0f};
 
-    WGPURenderPassColorAttachment color_attachment = {};
-    color_attachment.view = texture_view;
-    color_attachment.loadOp = WGPULoadOp_Clear;
-    color_attachment.storeOp = WGPUStoreOp_Store;
-    color_attachment.clearValue = {1.0f, 0.5f, 0.0f, 1.0f};
+        WGPURenderPassDescriptor pass_desc = {};
+        pass_desc.colorAttachmentCount = 1;
+        pass_desc.colorAttachments = &color_attachment;
+        pass_desc.depthStencilAttachment = nullptr;
 
-    WGPURenderPassDescriptor pass_desc = {};
-    pass_desc.colorAttachmentCount = 1;
-    pass_desc.colorAttachments = &color_attachment;
-    pass_desc.depthStencilAttachment = nullptr;
+        auto pass_encoder = wgpuCommandEncoderBeginRenderPass(encoder, &pass_desc);
 
-    auto pass_encoder = wgpuCommandEncoderBeginRenderPass(encoder, &pass_desc);
+        wgpuRenderPassEncoderSetPipeline(pass_encoder, pass->pipeline);
+        wgpuRenderPassEncoderDraw(pass_encoder, 4, 1, 0, 0);
 
-    wgpuRenderPassEncoderEnd(pass_encoder);
-    wgpuRenderPassEncoderRelease(pass_encoder);
+        wgpuRenderPassEncoderEnd(pass_encoder);
+        wgpuRenderPassEncoderRelease(pass_encoder);
 
-    WGPUCommandBuffer cmd_buffer = wgpuCommandEncoderFinish(encoder, nullptr);
-    assert(cmd_buffer);
+        WGPUCommandBuffer cmd_buffer = wgpuCommandEncoderFinish(encoder, nullptr);
+        assert(cmd_buffer);
 
-    wgpuCommandEncoderRelease(encoder);
+        wgpuCommandEncoderRelease(encoder);
 
-    wgpuQueueSubmit(m_cmd_queue, 1, &cmd_buffer);
+        wgpuQueueSubmit(m_cmd_queue, 1, &cmd_buffer);
 
-    wgpuCommandBufferRelease(cmd_buffer);
-    wgpuCommandEncoderRelease(encoder);
+        wgpuCommandBufferRelease(cmd_buffer);
+        wgpuCommandEncoderRelease(encoder);
+    }
 
     wgpuSwapChainPresent(m_swap_chain);
+}
+
+Result<void, ReimuError> WebGPURenderer::load_shader(const std::string &name, const char *data) {
+    WGPUShaderModuleWGSLDescriptor wgsl_desc = {};
+    wgsl_desc.chain = {
+        .next = nullptr,
+        .sType = WGPUSType_ShaderModuleWGSLDescriptor,
+    };
+
+    wgsl_desc.code = data;
+    
+    WGPUShaderModuleDescriptor shader_desc = {};
+    shader_desc.nextInChain = &wgsl_desc.chain;
+
+    WGPUShaderModule shader = wgpuDeviceCreateShaderModule(m_device, &shader_desc);
+    if (!shader) {
+        logger::warn("Failed to create shader module: {}", name);
+        
+        return ERR(ReimuError::RendererShaderCompilationFailed);
+    }
+
+    m_shaders.insert({name, shader});
+
+    return OK();
+}
+
+Result<Texture *, ReimuError> WebGPURenderer::create_texture(const Vector2i &size, ColorFormat format) {
+    auto tex_format = convert_color_format(format);
+
+    WGPUTextureDescriptor texture_desc = {};
+    texture_desc.size.width = size.x;
+    texture_desc.size.height = size.y;
+    texture_desc.mipLevelCount = 1;
+    texture_desc.sampleCount = 1;
+    texture_desc.dimension = WGPUTextureDimension_2D;
+    texture_desc.format = tex_format;
+    texture_desc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
+
+    WGPUTexture texture = wgpuDeviceCreateTexture(m_device, &texture_desc);
+    if (!texture) {
+        logger::warn("Failed to create texture");
+
+        return ERR(ReimuError::RendererError);
+    }
+
+    WGPUTextureViewDescriptor texture_view_desc = {};
+    texture_view_desc.format = tex_format;
+    texture_view_desc.dimension = WGPUTextureViewDimension_2D;
+    texture_view_desc.baseMipLevel = 1;
+    texture_view_desc.mipLevelCount = 1;
+    texture_view_desc.baseArrayLayer = 0;
+    texture_view_desc.arrayLayerCount = 1;
+    texture_view_desc.aspect = WGPUTextureAspect_All;
+
+    WGPUTextureView texture_view = wgpuTextureCreateView(texture, &texture_view_desc);
+    if (!texture_view) {
+        logger::warn("Failed to create texture view");
+
+        return ERR(ReimuError::RendererError);
+    }
+
+    return new WebGPUTexture(*this, format, size, texture, texture_view);
+}
+
+Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const BindingDefinition *bindings,
+        size_t num_bindings) {
+    auto shader_module = m_shaders.at("default");
+    assert(shader_module);
+
+    WGPUBindGroupLayout bind_group_layout = nullptr;
+    if (num_bindings > 0) {
+        // Construct the bind group layout
+        std::vector<WGPUBindGroupLayoutEntry> bind_group_layout_entries;
+        for (int i = 0; i < num_bindings; i++) {
+            bind_group_layout_entries.push_back(convert_binding_definition(bindings[i]));
+        }
+
+        WGPUBindGroupLayoutDescriptor bind_group_layout_desc = {};
+        bind_group_layout_desc.entryCount = bind_group_layout_entries.size();
+        bind_group_layout_desc.entries = bind_group_layout_entries.data();
+
+        bind_group_layout = wgpuDeviceCreateBindGroupLayout(m_device, &bind_group_layout_desc);
+        assert(bind_group_layout);
+    }
+    
+    // Create the pipeline
+    WGPURenderPipelineDescriptor pipeline_desc = {};
+    pipeline_desc.label = "render pipeline";
+    pipeline_desc.layout = nullptr;
+    
+    pipeline_desc.vertex = {
+        .nextInChain = nullptr,
+        .module = shader_module,
+        .entryPoint = "vertex_main",
+        .constantCount = 0,
+        .constants = nullptr,
+        .bufferCount = 0,
+        .buffers = nullptr,
+    };
+
+    pipeline_desc.primitive = {
+        .nextInChain = nullptr,
+        .topology = WGPUPrimitiveTopology_TriangleStrip,
+        .stripIndexFormat = WGPUIndexFormat_Undefined,
+        .frontFace = WGPUFrontFace_CCW,
+        .cullMode = WGPUCullMode_None,
+    };
+
+    WGPUBlendState blend_state = {};
+    blend_state.color.srcFactor = WGPUBlendFactor_SrcAlpha;
+    blend_state.color.dstFactor = WGPUBlendFactor_OneMinusSrcAlpha;
+    blend_state.color.operation = WGPUBlendOperation_Add;
+
+    blend_state.alpha.srcFactor = WGPUBlendFactor_One;
+    blend_state.alpha.dstFactor = WGPUBlendFactor_One;
+    blend_state.alpha.operation = WGPUBlendOperation_Add;
+
+    WGPUColorTargetState color_target = {};
+    color_target.format = SWAP_CHAIN_FORMAT;
+    color_target.blend = &blend_state;
+    color_target.writeMask = WGPUColorWriteMask_All;
+
+    WGPUFragmentState fragment_state = {};
+    fragment_state.module = shader_module;
+    fragment_state.entryPoint = "fragment_main";
+    fragment_state.constantCount = 0;
+    fragment_state.constants = nullptr;
+
+    fragment_state.targetCount = 1;
+    fragment_state.targets = &color_target;
+
+    pipeline_desc.fragment = &fragment_state;
+
+    pipeline_desc.depthStencil = nullptr;
+
+    pipeline_desc.multisample.count = 1;
+    pipeline_desc.multisample.mask = 0xffffffff;
+
+    auto pipeline = wgpuDeviceCreateRenderPipeline(m_device, &pipeline_desc);
+    assert(pipeline);
+
+    auto render_pass = new WebGPURenderPass{*this, pipeline};
+
+    render_pass->pipeline = pipeline;
+
+    m_render_passes.emplace(render_pass);
+
+    return OK(render_pass);
+}
+
+void WebGPURenderer::write_texture(const WGPUImageCopyTexture &destination, void const *data,
+        size_t dataSize, const WGPUTextureDataLayout &dataLayout, const WGPUExtent3D &writeSize) {
+    wgpuQueueWriteTexture(m_cmd_queue, &destination, data, dataSize, &dataLayout, &writeSize);
+}
+
+WGPUTextureFormat WebGPURenderer::convert_color_format(ColorFormat fmt) {
+    switch (fmt) {
+    case ColorFormat::RGBA8:
+        return WGPUTextureFormat_RGBA8Unorm;
+    }
+
+    logger::fatal("Unsupported color format");
+}
+
+WGPUShaderStageFlags WebGPURenderer::convert_shader_stage(ShaderStage stage) {
+    switch (stage) {
+    case ShaderStage::Vertex:
+        return WGPUShaderStage_Vertex;
+    case ShaderStage::Fragment:
+        return WGPUShaderStage_Fragment;
+    }
+
+    logger::fatal("Unsupported shader stage");
+}
+
+WGPUBindGroupLayoutEntry WebGPURenderer::convert_binding_definition(const BindingDefinition &binding) {
+    WGPUBindGroupLayoutEntry entry = {};
+    entry.binding = binding.index;
+    entry.visibility = convert_shader_stage(binding.visibility);
+
+    switch (binding.type) {
+    case BindingType::UniformBuffer:
+        entry.buffer.type = WGPUBufferBindingType_Uniform;
+        break;
+    case BindingType::Texture:
+        // For now we force texture samples to be floats
+        entry.texture.sampleType = WGPUTextureSampleType_Float;
+        entry.texture.viewDimension = WGPUTextureViewDimension_2D;
+        break;
+    default:
+        logger::fatal("Unsupported binding type");
+    }
+
+    return entry;
 }
 
 Result<WGPUSurface, ReimuError> WebGPURenderer::create_bind_window_surface(WGPUInstance instance, video::Window *window) {
@@ -223,7 +447,7 @@ WGPUAdapter WebGPURenderer::create_adapter(WGPUInstance instance, const WGPURequ
 
     // Request an adapter using a lambda for the callback
     wgpuInstanceRequestAdapter(instance, &adapter_options,
-        [](WGPURequestAdapterStatus s, WGPUAdapter a, char const *msg, void *data) {
+        [](WGPURequestAdapterStatus s, WGPUAdapter a, char const *, void *data) {
             auto *request = (AdapterRequest *)data;
 
             if (s == WGPURequestAdapterStatus_Success) {
@@ -245,7 +469,7 @@ WGPUDevice WebGPURenderer::create_device(WGPUAdapter adapter, const WGPUDeviceDe
     } request;
     
     wgpuAdapterRequestDevice(adapter, &device_desc, [](WGPURequestDeviceStatus s, WGPUDevice d, 
-        char const *msg, void *data) -> void {
+        char const *, void *data) -> void {
             auto *request = (Request *)data;
 
             if (s == WGPURequestDeviceStatus_Success) {

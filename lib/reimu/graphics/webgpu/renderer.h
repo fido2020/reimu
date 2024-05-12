@@ -3,7 +3,11 @@
 #include <reimu/graphics/renderer.h>
 #include <reimu/video/window.h>
 
-#include <webgpu/webgpu.h>
+#include <map>
+#include <set>
+
+#include "render_pass.h"
+#include "webgpu.h"
 
 namespace reimu::graphics {
 
@@ -14,15 +18,31 @@ public:
     ~WebGPURenderer() override;
 
     void render() override;
+    Result<void, ReimuError> load_shader(const std::string &name, const char *data) override;
+    Result<RenderPass *, ReimuError> create_render_pass(const BindingDefinition *bindings,
+        size_t num_bindings) override;
+    Result<Texture *, ReimuError> create_texture(const Vector2i &size, ColorFormat color_format)
+        override;
+    
+    void on_destroy_render_pass(RenderPass *render_pass);
+    void write_texture(const WGPUImageCopyTexture &destination, void const *data, size_t dataSize,
+        const WGPUTextureDataLayout &dataLayout, const WGPUExtent3D &writeSize);
 
 private:
     WebGPURenderer() = default;
+
+    static WGPUTextureFormat convert_color_format(ColorFormat fmt);
+    static WGPUShaderStageFlags convert_shader_stage(ShaderStage stage);
+    static WGPUBindGroupLayoutEntry convert_binding_definition(const BindingDefinition &binding);
 
     static Result<WGPUSurface, ReimuError> create_bind_window_surface(WGPUInstance instance,
             video::Window *window);
     static WGPUAdapter create_adapter(WGPUInstance instance,
             const WGPURequestAdapterOptions &adapter_options);
     static WGPUDevice create_device(WGPUAdapter adapter, const WGPUDeviceDescriptor &device_desc);
+
+    std::map<std::string, WGPUShaderModule> m_shaders;
+    std::set<WebGPURenderPass *> m_render_passes;
 
     WGPUInstance m_instance = nullptr;
     WGPUSurface m_surface = nullptr;

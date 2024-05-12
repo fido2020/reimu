@@ -1,10 +1,8 @@
 #pragma once
 
-#include <concepts>
 #include <format>
 #include <string>
 #include <memory>
-#include <type_traits>
 
 namespace reimu {
 
@@ -66,7 +64,9 @@ struct ReimuError {
     enum {
         WindowCreationFailed = 0x1000,
         NoSuitableRenderer = 0x2000,
-        RendererUnsupportedWindowBackend = 0x2001,
+        RendererError = 0x2001,
+        RendererUnsupportedWindowBackend = 0x2002,
+        RendererShaderCompilationFailed = 0x2003,
     } code;
 
     ReimuError(decltype(code) code) : code(code) {}

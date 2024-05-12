@@ -81,6 +81,12 @@ public:
         return m_is_err;
     }
 
+    inline void ensure() {
+        if (m_is_err) {
+            logger::fatal("Unexpected error value: {}", m_err.as_string());
+        }
+    }
+
     inline E &&move_err() {
         return std::move(m_err);
     }

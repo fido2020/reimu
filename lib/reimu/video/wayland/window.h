@@ -9,11 +9,6 @@
 #include "driver.h"
 #include "xdg-shell-client-protocol.h"
 
-struct wl_surface;
-struct xdg_surface;
-struct xdg_toplevel;
-struct wl_egl_window;
-
 class WaylandWindow final : public reimu::video::Window {
 public:
     WaylandWindow(WaylandDriver &driver, wl_surface *surface, xdg_surface *xdg_surface,
@@ -66,9 +61,9 @@ public:
 
     WaylandDriver &driver;
 
-    wl_surface *surface;
-    xdg_surface *xdg_surface;
-    xdg_toplevel *xdg_toplevel;
+    struct wl_surface *surface;
+    struct xdg_surface *xdg_surface;
+    struct xdg_toplevel *xdg_toplevel;
 
     reimu::Vector2i size;
 };

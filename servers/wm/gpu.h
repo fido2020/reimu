@@ -56,7 +56,7 @@ public:
             drmModeConnector *conn = drmModeGetConnector(card, res->connectors[i]);
             if (!conn) continue;
 
-            printf("Connector type: ", conn->connector_type);
+            printf("Connector type: {}", conn->connector_type);
             int num_modes = conn->count_modes;
             for (int i = 0; i < num_modes; i++) {
                 drmModeModeInfo *mode = conn->modes + i;
