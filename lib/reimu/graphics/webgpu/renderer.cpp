@@ -18,6 +18,8 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
 
     auto *renderer = new WebGPURenderer;
 
+    renderer->m_viewport_size = window->get_size();
+
     auto instance = wgpuCreateInstance(&desc);
     if (!instance) {
         logger::warn("Failed to create WebGPU instance");
@@ -124,7 +126,7 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
 
     // TODO: remove
     renderer->load_shader("default", R"(
-        @group(0) @binding(0) var tex: texture_2d<f32>;
+        @group(0) @binding(1) var tex: texture_2d<f32>;
 
         struct VertexOutput {
             @builtin(position) position: vec4f,
@@ -202,7 +204,10 @@ void WebGPURenderer::render() {
 
         pass->render(texture_view, encoder);
 
-        WGPUCommandBuffer cmd_buffer = wgpuCommandEncoderFinish(encoder, nullptr);
+        WGPUCommandBufferDescriptor cmd_buffer_desc{};
+        cmd_buffer_desc.label = "command buffer";
+
+        WGPUCommandBuffer cmd_buffer = wgpuCommandEncoderFinish(encoder, &cmd_buffer_desc);
         assert(cmd_buffer);
 
         wgpuCommandEncoderRelease(encoder);
@@ -210,9 +215,9 @@ void WebGPURenderer::render() {
         wgpuQueueSubmit(m_cmd_queue, 1, &cmd_buffer);
 
         wgpuCommandBufferRelease(cmd_buffer);
-        wgpuCommandEncoderRelease(encoder);
     }
 
+    wgpuTextureViewRelease(texture_view);
     wgpuSwapChainPresent(m_swap_chain);
 }
 
@@ -373,13 +378,19 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
 
     wgpuPipelineLayoutRelease(pipeline_layout);
 
-    auto render_pass = new WebGPURenderPass{*this, pipeline, bind_group_layout, num_bindings};
+    auto render_pass = new WebGPURenderPass{*this, pipeline, bind_group_layout, bindings, num_bindings};
 
     render_pass->pipeline = pipeline;
 
     m_render_passes.emplace(render_pass);
 
     return OK(render_pass);
+}
+
+void WebGPURenderer::resize_viewport(const Vector2i &size) {
+    m_viewport_size = size;
+
+    
 }
 
 void WebGPURenderer::write_texture(const WGPUImageCopyTexture &destination, void const *data,
@@ -389,6 +400,14 @@ void WebGPURenderer::write_texture(const WGPUImageCopyTexture &destination, void
 
 WGPUBindGroup WebGPURenderer::create_bind_group(const WGPUBindGroupDescriptor &desc) {
     return wgpuDeviceCreateBindGroup(m_device, &desc);
+}
+
+WGPUBuffer WebGPURenderer::create_buffer(const WGPUBufferDescriptor &desc) {
+    return wgpuDeviceCreateBuffer(m_device, &desc);
+}
+
+void WebGPURenderer::write_buffer(WGPUBuffer buffer, size_t offset, const void *data, size_t size) {
+    wgpuQueueWriteBuffer(m_cmd_queue, buffer, offset, data, size);
 }
 
 WGPUTextureFormat WebGPURenderer::convert_color_format(ColorFormat fmt) {

@@ -19,4 +19,9 @@ Result<Window *, ReimuError> Window::create(const Vector2i &size) {
     return OK(win);
 }
 
+void Window::set_size(const Vector2i &size) {
+    if (m_renderer)
+        m_renderer->resize_viewport(size);
+}
+
 }

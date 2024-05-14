@@ -15,7 +15,7 @@ class Texture;
 class WebGPURenderPass : public RenderPass {
 public:
     WebGPURenderPass(WebGPURenderer &renderer, WGPURenderPipeline pipeline,
-            WGPUBindGroupLayout bind_layout, size_t num_bindings);
+            WGPUBindGroupLayout bind_layout, const BindingDefinition *bindings, size_t num_bindings);
 
     ~WebGPURenderPass() override;
 
@@ -36,6 +36,14 @@ public:
     std::shared_ptr<RenderStrategy> strategy = nullptr;
 
 private:
+    struct Binding {
+        union {
+            WGPUBuffer buffer;
+            class Texture *texture;
+        };
+        BindingType type;
+    };
+
     WebGPURenderer &m_renderer;
 
     WGPURenderPassEncoder m_pass_encoder = nullptr;
@@ -44,6 +52,9 @@ private:
     WGPUBindGroup m_bind_group = nullptr;
 
     std::vector<WGPUBindGroupEntry> m_bind_entries;
+    std::vector<Binding> m_bindings;
+
+    std::vector<WGPUBindGroup> m_old_bind_groups;
 };
 
 }

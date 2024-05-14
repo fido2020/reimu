@@ -8,19 +8,50 @@
 namespace reimu::graphics {
 
 WebGPURenderPass::WebGPURenderPass(WebGPURenderer &renderer, WGPURenderPipeline pipeline,
-        WGPUBindGroupLayout bind_layout, size_t num_bindings)
+        WGPUBindGroupLayout bind_layout, const BindingDefinition *bindings, size_t num_bindings)
         : pipeline(pipeline), bind_layout(bind_layout), m_renderer(renderer) {
     m_bind_entries.resize(num_bindings);
 
     memset(m_bind_entries.data(), 0, sizeof(WGPUBindGroupEntry) * num_bindings);
     for (size_t i = 0; i < m_bind_entries.size(); i++) {
+        auto type = bindings[i].type;
+
         m_bind_entries[i].binding = i;
+
+        // If the binding is a uniform buffer, create a buffer object for it
+        if (type == BindingType::UniformBuffer) {
+            WGPUBufferDescriptor buffer_desc = {};
+            buffer_desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform;
+            buffer_desc.size = bindings[i].uniform_buffer.size;
+            buffer_desc.mappedAtCreation = false;
+
+            auto buffer = m_renderer.create_buffer(buffer_desc);
+            assert(buffer);
+
+            m_bind_entries[i].buffer = buffer;
+            m_bind_entries[i].size = buffer_desc.size;
+
+            m_bindings.push_back(Binding {
+                .buffer = buffer,
+                .type = type
+            });
+        } else {
+            m_bindings.push_back(Binding {
+                .type = type
+            });
+        }
     }
 }
     
 WebGPURenderPass::~WebGPURenderPass() {
     if (m_bind_group) {
         wgpuBindGroupRelease(m_bind_group);
+    }
+
+    for (auto &binding : m_bindings) {
+        if (binding.type == BindingType::UniformBuffer) {
+            wgpuBufferRelease(binding.buffer);
+        }
     }
 
     wgpuRenderPipelineRelease(pipeline);
@@ -38,7 +69,7 @@ void WebGPURenderPass::update_bindings() {
     desc.entries = m_bind_entries.data();
 
     if (m_bind_group) {
-        wgpuBindGroupRelease(m_bind_group);
+        m_old_bind_groups.push_back(m_bind_group);
     }
 
     m_bind_group = m_renderer.create_bind_group(desc);
@@ -79,6 +110,11 @@ void WebGPURenderPass::render(WGPUTextureView output, WGPUCommandEncoder encoder
     wgpuRenderPassEncoderEnd(m_pass_encoder);
     wgpuRenderPassEncoderRelease(m_pass_encoder);
 
+    for (auto &group : m_old_bind_groups) {
+        wgpuBindGroupRelease(group);
+    }
+    m_old_bind_groups.clear();
+
     m_pass_encoder = nullptr;
 }
 
@@ -93,6 +129,10 @@ void WebGPURenderPass::draw(int num_vertices) {
 void WebGPURenderPass::bind_texture(int index, Texture *tex) {
     assert(index < m_bind_entries.size());
 
+    if (m_bindings[index].texture == tex) {
+        return;
+    }
+
     auto *texture = (WebGPUTexture *)tex;
 
     auto &entry = m_bind_entries[index];
@@ -105,14 +145,15 @@ void WebGPURenderPass::bind_texture(int index, Texture *tex) {
         entry.textureView = nullptr;
     }
 
+    m_bindings[index].texture = tex;
+
     m_bindings_changed = true;
 }
 
 void WebGPURenderPass::bind_uniform_buffer(int index, const void *data, size_t size) {
-    auto &entry = m_bind_entries[index];
-    entry.binding = index;
-    //entry.buffer = ...;
-    m_bindings_changed = true;
+    auto &binding = m_bindings[index];
+
+    m_renderer.write_buffer(binding.buffer, 0, data, size);
 }
 
 }

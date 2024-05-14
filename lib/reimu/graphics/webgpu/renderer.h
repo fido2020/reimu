@@ -23,12 +23,16 @@ public:
         size_t num_bindings) override;
     Result<Texture *, ReimuError> create_texture(const Vector2i &size, ColorFormat color_format)
         override;
+
+    void resize_viewport(const Vector2i &size) override;
     
     void on_destroy_render_pass(RenderPass *render_pass);
     void write_texture(const WGPUImageCopyTexture &destination, void const *data, size_t dataSize,
         const WGPUTextureDataLayout &dataLayout, const WGPUExtent3D &writeSize);
 
     WGPUBindGroup create_bind_group(const WGPUBindGroupDescriptor &desc);
+    WGPUBuffer create_buffer(const WGPUBufferDescriptor &desc);
+    void write_buffer(WGPUBuffer buffer, size_t offset, const void *data, size_t size);
 
 private:
     WebGPURenderer() = default;

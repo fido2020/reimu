@@ -23,6 +23,8 @@ public:
         wl_surface_damage_buffer(surface, 0, 0, size.x, size.y);
 
         sync_window();
+
+        Window::set_size(size);
     }
 
     void set_title(const std::string &title) override {

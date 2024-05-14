@@ -1,6 +1,7 @@
 #pragma once
 
 #include <reimu/core/result.h>
+#include <reimu/graphics/renderer.h>
 #include <reimu/graphics/vector.h>
 
 #include <string>
@@ -86,7 +87,7 @@ public:
      * 
      * @param size 
      */
-    virtual void set_size(const Vector2i &size) = 0;
+    virtual void set_size(const Vector2i &size);
 
     /**
      * @brief Set the title of the window
@@ -118,6 +119,8 @@ public:
 
 private:
     static Result<Window *, ReimuError> create(const Vector2i &m_size);
+
+    graphics::Renderer *m_renderer = nullptr;
 };
 
 }
