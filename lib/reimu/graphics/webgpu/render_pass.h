@@ -38,7 +38,9 @@ public:
 private:
     struct Binding {
         union {
-            WGPUBuffer buffer;
+            struct {
+                size_t size;
+            } uniform_buffer;
             class Texture *texture;
         };
         BindingType type;
@@ -54,7 +56,9 @@ private:
     std::vector<WGPUBindGroupEntry> m_bind_entries;
     std::vector<Binding> m_bindings;
 
+    // TODO: allocate one big buffer for UBOs and use dynamic offsets
     std::vector<WGPUBindGroup> m_old_bind_groups;
+    std::vector<WGPUBuffer> m_old_buffers;
 };
 
 }

@@ -25,14 +25,12 @@ WebGPURenderPass::WebGPURenderPass(WebGPURenderer &renderer, WGPURenderPipeline 
             buffer_desc.size = bindings[i].uniform_buffer.size;
             buffer_desc.mappedAtCreation = false;
 
-            auto buffer = m_renderer.create_buffer(buffer_desc);
-            assert(buffer);
-
-            m_bind_entries[i].buffer = buffer;
             m_bind_entries[i].size = buffer_desc.size;
 
             m_bindings.push_back(Binding {
-                .buffer = buffer,
+                .uniform_buffer = {
+                    .size = buffer_desc.size
+                },
                 .type = type
             });
         } else {
@@ -48,10 +46,12 @@ WebGPURenderPass::~WebGPURenderPass() {
         wgpuBindGroupRelease(m_bind_group);
     }
 
-    for (auto &binding : m_bindings) {
-        if (binding.type == BindingType::UniformBuffer) {
-            wgpuBufferRelease(binding.buffer);
-        }
+    for (auto &group : m_old_bind_groups) {
+        wgpuBindGroupRelease(group);
+    }
+
+    for (auto &buffer : m_old_buffers) {
+        wgpuBufferRelease(buffer);
     }
 
     wgpuRenderPipelineRelease(pipeline);
@@ -104,7 +104,7 @@ void WebGPURenderPass::render(WGPUTextureView output, WGPUCommandEncoder encoder
     }
 
     if (strategy) {
-        strategy->draw(*this);
+        strategy->draw(m_renderer, *this);
     }
 
     wgpuRenderPassEncoderEnd(m_pass_encoder);
@@ -153,7 +153,20 @@ void WebGPURenderPass::bind_texture(int index, Texture *tex) {
 void WebGPURenderPass::bind_uniform_buffer(int index, const void *data, size_t size) {
     auto &binding = m_bindings[index];
 
-    m_renderer.write_buffer(binding.buffer, 0, data, size);
+    WGPUBufferDescriptor buffer_desc = {};
+    buffer_desc.usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform;
+    buffer_desc.size = binding.uniform_buffer.size;
+    buffer_desc.mappedAtCreation = false;
+
+    auto buffer = m_renderer.create_buffer(buffer_desc);
+    assert(buffer);
+
+    m_renderer.write_buffer(buffer, 0, data, size);
+
+    m_bind_entries[index].buffer = buffer;
+    m_bindings_changed = true;
+
+    m_old_buffers.push_back(buffer);
 }
 
 }

@@ -7,6 +7,7 @@
 namespace reimu::graphics {
 
 class Texture;
+class Renderer;
 
 enum class BindingType {
     UniformBuffer,
@@ -45,7 +46,7 @@ public:
 
 class RenderStrategy {
 public:
-    virtual void draw(RenderPass &pass) = 0;
+    virtual void draw(Renderer &renderer, RenderPass &pass) = 0;
 };
 
 }

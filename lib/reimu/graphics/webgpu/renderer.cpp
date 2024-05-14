@@ -115,6 +115,13 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
 
     // TODO: remove
     renderer->load_shader("default", R"(
+        struct Uniform {
+            view_transform: mat4x4f,
+            source_region: vec4f,
+            target_region: vec4f,
+        };
+
+        @group(0) @binding(0) var<uniform> data: Uniform; 
         @group(0) @binding(1) var tex: texture_2d<f32>;
 
         struct VertexOutput {
@@ -125,27 +132,31 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
         @vertex
         fn vertex_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
             var p = vec2f(0.0, 0.0);
+            var uv = vec2f(0.0, 0.0);
             if (in_vertex_index == 0u) {
-                p = vec2f(-0.5, -0.5);
+                p = data.target_region.xy;
+                uv = data.source_region.xy;
             } else if (in_vertex_index == 1u) {
-                p = vec2f(0.5, -0.5);
+                p = data.target_region.zy;
+                uv = data.source_region.zy;
             } else if (in_vertex_index == 2u) {
-                p = vec2f(-0.5, 0.5);
+                p = data.target_region.xw;
+                uv = data.source_region.xw;
             } else {
-                p = vec2f(0.5, 0.5);
+                p = data.target_region.zw;
+                uv = data.source_region.zw;
             }
 
             return VertexOutput(
-                vec4f(p, 0.0, 1.0),
-                p + 0.5,
+                data.view_transform * vec4f(p, 0.0, 1.0),
+                uv
             );
         }
 
         @fragment
         fn fragment_main(in: VertexOutput) -> @location(0) vec4f {
-            return textureLoad(tex, vec2i(in.uv * vec2f(400.0, 400.0)), 0).rgba;
-        }
-    )").ensure();
+            return textureLoad(tex, vec2i(in.uv), 0).rgba;
+        })").ensure();
 
     window->set_renderer(renderer);
 
