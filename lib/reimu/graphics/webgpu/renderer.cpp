@@ -124,8 +124,15 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
 
     // TODO: remove
     renderer->load_shader("default", R"(
+        @group(0) @binding(0) var tex: texture_2d<f32>;
+
+        struct VertexOutput {
+            @builtin(position) position: vec4f,
+            @location(0) uv : vec2f
+        };
+
         @vertex
-        fn vertex_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
+        fn vertex_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
             var p = vec2f(0.0, 0.0);
             if (in_vertex_index == 0u) {
                 p = vec2f(-0.5, -0.5);
@@ -136,15 +143,18 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
             } else {
                 p = vec2f(0.5, 0.5);
             }
-            return vec4f(p, 0.0, 1.0);
+
+            return VertexOutput(
+                vec4f(p, 0.0, 1.0),
+                p + 0.5,
+            );
         }
 
         @fragment
-        fn fragment_main() -> @location(0) vec4f {
-            return vec4f(0.0, 0.4, 1.0, 1.0);
+        fn fragment_main(in: VertexOutput) -> @location(0) vec4f {
+            return textureLoad(tex, vec2i(in.uv * vec2f(400.0, 400.0)), 0).rgba;
         }
     )").ensure();
-    renderer->create_render_pass(nullptr, 0).ensure();
 
     return renderer;
 }
@@ -183,29 +193,14 @@ void WebGPURenderer::render() {
         return;
     }
 
-    for (auto &pass : m_render_passes) {WGPUCommandEncoderDescriptor encoder_desc = {};
+    for (auto &pass : m_render_passes) {
+        WGPUCommandEncoderDescriptor encoder_desc = {};
         encoder_desc.label = "command encoder";
 
         WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(m_device, &encoder_desc);
         assert(encoder);
-        WGPURenderPassColorAttachment color_attachment = {};
-        color_attachment.view = texture_view;
-        color_attachment.loadOp = WGPULoadOp_Clear;
-        color_attachment.storeOp = WGPUStoreOp_Store;
-        color_attachment.clearValue = {1.0f, 0.5f, 0.0f, 1.0f};
 
-        WGPURenderPassDescriptor pass_desc = {};
-        pass_desc.colorAttachmentCount = 1;
-        pass_desc.colorAttachments = &color_attachment;
-        pass_desc.depthStencilAttachment = nullptr;
-
-        auto pass_encoder = wgpuCommandEncoderBeginRenderPass(encoder, &pass_desc);
-
-        wgpuRenderPassEncoderSetPipeline(pass_encoder, pass->pipeline);
-        wgpuRenderPassEncoderDraw(pass_encoder, 4, 1, 0, 0);
-
-        wgpuRenderPassEncoderEnd(pass_encoder);
-        wgpuRenderPassEncoderRelease(pass_encoder);
+        pass->render(texture_view, encoder);
 
         WGPUCommandBuffer cmd_buffer = wgpuCommandEncoderFinish(encoder, nullptr);
         assert(cmd_buffer);
@@ -251,11 +246,12 @@ Result<Texture *, ReimuError> WebGPURenderer::create_texture(const Vector2i &siz
     WGPUTextureDescriptor texture_desc = {};
     texture_desc.size.width = size.x;
     texture_desc.size.height = size.y;
+    texture_desc.size.depthOrArrayLayers = 1;
     texture_desc.mipLevelCount = 1;
     texture_desc.sampleCount = 1;
     texture_desc.dimension = WGPUTextureDimension_2D;
     texture_desc.format = tex_format;
-    texture_desc.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopyDst;
+    texture_desc.usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst;
 
     WGPUTexture texture = wgpuDeviceCreateTexture(m_device, &texture_desc);
     if (!texture) {
@@ -267,7 +263,7 @@ Result<Texture *, ReimuError> WebGPURenderer::create_texture(const Vector2i &siz
     WGPUTextureViewDescriptor texture_view_desc = {};
     texture_view_desc.format = tex_format;
     texture_view_desc.dimension = WGPUTextureViewDimension_2D;
-    texture_view_desc.baseMipLevel = 1;
+    texture_view_desc.baseMipLevel = 0;
     texture_view_desc.mipLevelCount = 1;
     texture_view_desc.baseArrayLayer = 0;
     texture_view_desc.arrayLayerCount = 1;
@@ -293,7 +289,11 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
         // Construct the bind group layout
         std::vector<WGPUBindGroupLayoutEntry> bind_group_layout_entries;
         for (int i = 0; i < num_bindings; i++) {
-            bind_group_layout_entries.push_back(convert_binding_definition(bindings[i]));
+            auto entry = convert_binding_definition(bindings[i]);
+
+            logger::debug("entry stage: {}", entry.visibility);
+
+            bind_group_layout_entries.push_back(entry);
         }
 
         WGPUBindGroupLayoutDescriptor bind_group_layout_desc = {};
@@ -303,11 +303,20 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
         bind_group_layout = wgpuDeviceCreateBindGroupLayout(m_device, &bind_group_layout_desc);
         assert(bind_group_layout);
     }
-    
+
+    WGPUPipelineLayoutDescriptor layout_desc = {};
+    layout_desc.bindGroupLayoutCount = bind_group_layout ? 1 : 0;
+    layout_desc.bindGroupLayouts = &bind_group_layout;
+
+    logger::debug("wgpu pipeline bind group layouts: {}, layout: {:x}",
+        layout_desc.bindGroupLayoutCount, (uintptr_t)layout_desc.bindGroupLayouts[0]);
+
+    auto pipeline_layout = wgpuDeviceCreatePipelineLayout(m_device, &layout_desc);
+    assert(pipeline_layout);
+      
     // Create the pipeline
     WGPURenderPipelineDescriptor pipeline_desc = {};
     pipeline_desc.label = "render pipeline";
-    pipeline_desc.layout = nullptr;
     
     pipeline_desc.vertex = {
         .nextInChain = nullptr,
@@ -357,10 +366,14 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
     pipeline_desc.multisample.count = 1;
     pipeline_desc.multisample.mask = 0xffffffff;
 
+    pipeline_desc.layout = pipeline_layout;
+
     auto pipeline = wgpuDeviceCreateRenderPipeline(m_device, &pipeline_desc);
     assert(pipeline);
 
-    auto render_pass = new WebGPURenderPass{*this, pipeline};
+    wgpuPipelineLayoutRelease(pipeline_layout);
+
+    auto render_pass = new WebGPURenderPass{*this, pipeline, bind_group_layout, num_bindings};
 
     render_pass->pipeline = pipeline;
 
@@ -372,6 +385,10 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
 void WebGPURenderer::write_texture(const WGPUImageCopyTexture &destination, void const *data,
         size_t dataSize, const WGPUTextureDataLayout &dataLayout, const WGPUExtent3D &writeSize) {
     wgpuQueueWriteTexture(m_cmd_queue, &destination, data, dataSize, &dataLayout, &writeSize);
+}
+
+WGPUBindGroup WebGPURenderer::create_bind_group(const WGPUBindGroupDescriptor &desc) {
+    return wgpuDeviceCreateBindGroup(m_device, &desc);
 }
 
 WGPUTextureFormat WebGPURenderer::convert_color_format(ColorFormat fmt) {
@@ -405,8 +422,10 @@ WGPUBindGroupLayoutEntry WebGPURenderer::convert_binding_definition(const Bindin
         break;
     case BindingType::Texture:
         // For now we force texture samples to be floats
+        entry.texture.nextInChain = nullptr;
         entry.texture.sampleType = WGPUTextureSampleType_Float;
         entry.texture.viewDimension = WGPUTextureViewDimension_2D;
+        entry.texture.multisampled = false;
         break;
     default:
         logger::fatal("Unsupported binding type");

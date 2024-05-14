@@ -28,6 +28,8 @@ public:
     void write_texture(const WGPUImageCopyTexture &destination, void const *data, size_t dataSize,
         const WGPUTextureDataLayout &dataLayout, const WGPUExtent3D &writeSize);
 
+    WGPUBindGroup create_bind_group(const WGPUBindGroupDescriptor &desc);
+
 private:
     WebGPURenderer() = default;
 

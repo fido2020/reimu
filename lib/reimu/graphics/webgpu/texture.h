@@ -16,6 +16,10 @@ public:
 
     void update(const void *data, size_t size) override;
 
+    inline WGPUTextureView view() {
+        return m_view;
+    }
+
 private:
     WebGPURenderer &m_renderer;
 
