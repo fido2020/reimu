@@ -45,6 +45,25 @@ public:
      * @return Result<Texture *, ReimuError>
      */
     virtual Result<Texture *, ReimuError> create_texture(const Vector2i& size, ColorFormat color_format) = 0;
+
+    /**
+     * @brief Resize the viewport for rendering
+     * 
+     * Must not be called within the render loop (e.g. by a RenderStrategy)
+    */
+    virtual void resize_viewport(const Vector2i& size) = 0;
+
+    /**
+     * @brief Get the current viewport size in pixels
+     * 
+     * @return const Vector2i
+     */
+    inline const Vector2i get_viewport_size() const {
+        return m_viewport_size;
+    }
+
+protected:
+    Vector2i m_viewport_size;
 };
 
 Result<Renderer *, ReimuError> create_attach_renderer(video::Window *window);

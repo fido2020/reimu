@@ -117,6 +117,10 @@ public:
      */
     virtual Result<NativeWindowHandle *, ReimuError> get_native_handle() = 0;
 
+    inline void set_renderer(graphics::Renderer *r) {
+        m_renderer = r;
+    }
+
 private:
     static Result<Window *, ReimuError> create(const Vector2i &m_size);
 

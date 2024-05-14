@@ -106,18 +106,7 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
     wgpuQueueOnSubmittedWorkDone(queue, renderer->m_queue_callback, nullptr);
 
     // Create a swap chain
-    WGPUSwapChainDescriptor swap_chain_desc = {};
-    swap_chain_desc.nextInChain = nullptr;
-
-    swap_chain_desc.width = static_cast<uint32_t>(window->get_size().x);
-    swap_chain_desc.height = static_cast<uint32_t>(window->get_size().y);
-
-    swap_chain_desc.usage = WGPUTextureUsage_RenderAttachment;
-    swap_chain_desc.format = SWAP_CHAIN_FORMAT;
-    swap_chain_desc.presentMode = WGPUPresentMode_Fifo;
-
-    renderer->m_swap_chain = wgpuDeviceCreateSwapChain(device, renderer->m_surface, &swap_chain_desc);
-    if (!renderer->m_swap_chain) {
+    if(renderer->create_swap_chain().is_err()) {
         logger::warn("Failed to create WebGPU swap chain");
 
         delete renderer;
@@ -157,6 +146,8 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
             return textureLoad(tex, vec2i(in.uv * vec2f(400.0, 400.0)), 0).rgba;
         }
     )").ensure();
+
+    window->set_renderer(renderer);
 
     return renderer;
 }
@@ -388,9 +379,13 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
 }
 
 void WebGPURenderer::resize_viewport(const Vector2i &size) {
+    logger::debug("resizing viewport!");
+
     m_viewport_size = size;
 
-    
+    wgpuSwapChainRelease(m_swap_chain);
+
+    create_swap_chain().ensure();
 }
 
 void WebGPURenderer::write_texture(const WGPUImageCopyTexture &destination, void const *data,
@@ -408,6 +403,25 @@ WGPUBuffer WebGPURenderer::create_buffer(const WGPUBufferDescriptor &desc) {
 
 void WebGPURenderer::write_buffer(WGPUBuffer buffer, size_t offset, const void *data, size_t size) {
     wgpuQueueWriteBuffer(m_cmd_queue, buffer, offset, data, size);
+}
+
+Result<void, ReimuError> WebGPURenderer::create_swap_chain() {
+    WGPUSwapChainDescriptor swap_chain_desc = {};
+    swap_chain_desc.nextInChain = nullptr;
+
+    swap_chain_desc.width = static_cast<uint32_t>(m_viewport_size.x);
+    swap_chain_desc.height = static_cast<uint32_t>(m_viewport_size.y);
+
+    swap_chain_desc.usage = WGPUTextureUsage_RenderAttachment;
+    swap_chain_desc.format = SWAP_CHAIN_FORMAT;
+    swap_chain_desc.presentMode = WGPUPresentMode_Fifo;
+
+    m_swap_chain = wgpuDeviceCreateSwapChain(m_device, m_surface, &swap_chain_desc);
+    if (!m_swap_chain) {
+        return ERR(ReimuError::RendererError);
+    }
+
+    return OK();
 }
 
 WGPUTextureFormat WebGPURenderer::convert_color_format(ColorFormat fmt) {

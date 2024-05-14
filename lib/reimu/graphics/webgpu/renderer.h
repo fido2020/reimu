@@ -37,6 +37,8 @@ public:
 private:
     WebGPURenderer() = default;
 
+    Result<void, ReimuError> create_swap_chain();
+
     static WGPUTextureFormat convert_color_format(ColorFormat fmt);
     static WGPUShaderStageFlags convert_shader_stage(ShaderStage stage);
     static WGPUBindGroupLayoutEntry convert_binding_definition(const BindingDefinition &binding);
