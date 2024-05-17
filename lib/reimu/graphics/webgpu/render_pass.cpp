@@ -98,10 +98,6 @@ void WebGPURenderPass::render(WGPUTextureView output, WGPUCommandEncoder encoder
     m_pass_encoder = wgpuCommandEncoderBeginRenderPass(encoder, &pass_desc);
 
     wgpuRenderPassEncoderSetPipeline(m_pass_encoder, pipeline);
-    
-    if (m_bind_group) {
-        wgpuRenderPassEncoderSetBindGroup(m_pass_encoder, 0, m_bind_group, 0, nullptr);
-    }
 
     if (strategy) {
         strategy->draw(m_renderer, *this);
@@ -114,6 +110,11 @@ void WebGPURenderPass::render(WGPUTextureView output, WGPUCommandEncoder encoder
         wgpuBindGroupRelease(group);
     }
     m_old_bind_groups.clear();
+    
+    for (auto &buffer : m_old_buffers) {
+        wgpuBufferRelease(buffer);
+    }
+    m_old_buffers.clear();
 
     m_pass_encoder = nullptr;
 }
@@ -128,10 +129,6 @@ void WebGPURenderPass::draw(int num_vertices) {
 
 void WebGPURenderPass::bind_texture(int index, Texture *tex) {
     assert(index < m_bind_entries.size());
-
-    if (m_bindings[index].texture == tex) {
-        return;
-    }
 
     auto *texture = (WebGPUTexture *)tex;
 

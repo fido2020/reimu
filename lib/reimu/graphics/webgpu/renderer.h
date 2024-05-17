@@ -30,6 +30,7 @@ public:
     void write_texture(const WGPUImageCopyTexture &destination, void const *data, size_t dataSize,
         const WGPUTextureDataLayout &dataLayout, const WGPUExtent3D &writeSize);
 
+    WGPUTexture create_texture_obj(const WGPUTextureDescriptor &desc);
     WGPUBindGroup create_bind_group(const WGPUBindGroupDescriptor &desc);
     WGPUBuffer create_buffer(const WGPUBufferDescriptor &desc);
     void write_buffer(WGPUBuffer buffer, size_t offset, const void *data, size_t size);
@@ -39,8 +40,6 @@ private:
 
     Result<void, ReimuError> create_swap_chain();
 
-    static WGPUTextureFormat convert_color_format(ColorFormat fmt);
-    static WGPUShaderStageFlags convert_shader_stage(ShaderStage stage);
     static WGPUBindGroupLayoutEntry convert_binding_definition(const BindingDefinition &binding);
 
     static Result<WGPUSurface, ReimuError> create_bind_window_surface(WGPUInstance instance,

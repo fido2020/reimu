@@ -248,7 +248,7 @@ Result<void, ReimuError> WebGPURenderer::load_shader(const std::string &name, co
 }
 
 Result<Texture *, ReimuError> WebGPURenderer::create_texture(const Vector2i &size, ColorFormat format) {
-    auto tex_format = convert_color_format(format);
+    auto tex_format = webgpu::convert_color_format(format);
 
     WGPUTextureDescriptor texture_desc = {};
     texture_desc.size.width = size.x;
@@ -404,6 +404,10 @@ void WebGPURenderer::write_texture(const WGPUImageCopyTexture &destination, void
     wgpuQueueWriteTexture(m_cmd_queue, &destination, data, dataSize, &dataLayout, &writeSize);
 }
 
+WGPUTexture WebGPURenderer::create_texture_obj(const WGPUTextureDescriptor &desc) {
+    return wgpuDeviceCreateTexture(m_device, &desc);
+}
+
 WGPUBindGroup WebGPURenderer::create_bind_group(const WGPUBindGroupDescriptor &desc) {
     return wgpuDeviceCreateBindGroup(m_device, &desc);
 }
@@ -435,30 +439,10 @@ Result<void, ReimuError> WebGPURenderer::create_swap_chain() {
     return OK();
 }
 
-WGPUTextureFormat WebGPURenderer::convert_color_format(ColorFormat fmt) {
-    switch (fmt) {
-    case ColorFormat::RGBA8:
-        return WGPUTextureFormat_RGBA8Unorm;
-    }
-
-    logger::fatal("Unsupported color format");
-}
-
-WGPUShaderStageFlags WebGPURenderer::convert_shader_stage(ShaderStage stage) {
-    switch (stage) {
-    case ShaderStage::Vertex:
-        return WGPUShaderStage_Vertex;
-    case ShaderStage::Fragment:
-        return WGPUShaderStage_Fragment;
-    }
-
-    logger::fatal("Unsupported shader stage");
-}
-
 WGPUBindGroupLayoutEntry WebGPURenderer::convert_binding_definition(const BindingDefinition &binding) {
     WGPUBindGroupLayoutEntry entry = {};
     entry.binding = binding.index;
-    entry.visibility = convert_shader_stage(binding.visibility);
+    entry.visibility = webgpu::convert_shader_stage(binding.visibility);
 
     switch (binding.type) {
     case BindingType::UniformBuffer:

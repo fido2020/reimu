@@ -36,11 +36,6 @@ template <typename T> struct Vector2 {
     }
 };
 
-template<typename T, typename F>
-constexpr Vector2<T> vector_static_cast(const Vector2<F>& from){
-    return Vector2<T>{static_cast<T>(from.x), static_cast<T>(from.y)};
-}
-
 template <typename T> inline Vector2<T> operator*(const Vector2<T>& vector, T magnitude) {
     return Vector2<T>{vector.x * magnitude, vector.y * magnitude};
 }
@@ -99,6 +94,17 @@ template <typename T> struct Vector4 {
     T z;
     T w;
 };
+
+template<typename T, typename F>
+constexpr Vector2<T> vector_static_cast(const Vector2<F>& from){
+    return Vector2<T>{static_cast<T>(from.x), static_cast<T>(from.y)};
+}
+
+template<typename T, typename F>
+constexpr Vector4<T> vector_static_cast(const Vector4<F>& from){
+    return Vector4<T>{static_cast<T>(from.x), static_cast<T>(from.y), static_cast<T>(from.z),
+        static_cast<T>(from.w)};
+}
 
 using Vector2f = Vector2<float>;
 using Vector2i = Vector2<int>;

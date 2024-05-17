@@ -20,7 +20,7 @@ union Color final {
 	inline constexpr Color(uint8_t _r, uint8_t _g, uint8_t _b) : r(_r), g(_g), b(_b), a(0xff) {}
 	inline constexpr Color(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a) : r(_r), g(_g), b(_b), a(_a) {}
 
-	inline constexpr Vector4f AsFloat() const {
+	inline constexpr Vector4f as_float() const {
 		return { r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f };
 	}
 };

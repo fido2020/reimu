@@ -14,6 +14,9 @@ public:
             WGPUTexture texture, WGPUTextureView view)
         : Texture(fmt, size), m_renderer(renderer), m_texture(texture), m_view(view) {}
 
+    ~WebGPUTexture();
+
+    void replace(ColorFormat fmt, const Vector2i &size) override;
     void update(const void *data, size_t size) override;
 
     inline WGPUTextureView view() {
