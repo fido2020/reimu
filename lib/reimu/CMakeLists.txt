@@ -22,6 +22,7 @@ target_link_libraries(reimu PUBLIC
 )
 
 add_subdirectory(graphics)
+add_subdirectory(gui)
 add_subdirectory(video)
 
 add_subdirectory(os/unix)
