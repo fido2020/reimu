@@ -41,7 +41,7 @@ public:
     virtual void bind_uniform_buffer(int index, const void *data, size_t size) = 0;
     virtual void draw(int num_vertices) = 0;
 
-    virtual void set_strategy(std::shared_ptr<RenderStrategy> strategy) = 0;
+    virtual void set_strategy(RenderStrategy *strategy) = 0;
 };
 
 class RenderStrategy {

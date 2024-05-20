@@ -26,14 +26,14 @@ public:
     void bind_texture(int index, Texture *texture) override;
     void bind_uniform_buffer(int index, const void *data, size_t size) override;
 
-    inline void set_strategy(std::shared_ptr<RenderStrategy> strategy) override {
+    inline void set_strategy(RenderStrategy *strategy) override {
         this->strategy = strategy;
     }
 
     WGPURenderPipeline pipeline = nullptr;
     WGPUBindGroupLayout bind_layout = nullptr;
 
-    std::shared_ptr<RenderStrategy> strategy = nullptr;
+    RenderStrategy *strategy = nullptr;
 
 private:
     struct Binding {

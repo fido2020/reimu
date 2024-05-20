@@ -2,11 +2,6 @@
 
 namespace reimu::gui {
 
-Button::Button(CreateTexture create_texture)
-    : Widget(create_texture) {
-    m_surface = std::make_unique<graphics::Surface>(m_create_texture_fn({ 1, 1 }));
-}
-
 void Button::repaint(UIPainter &painter) {
     Widget::repaint(painter);
 

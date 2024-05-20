@@ -80,6 +80,7 @@ public:
         return Builder{}.set_size(m_size);
     }
 
+    static Result<Window *, ReimuError> create(const Vector2i &m_size);
     virtual ~Window();
 
     /**
@@ -122,8 +123,6 @@ public:
     }
 
 private:
-    static Result<Window *, ReimuError> create(const Vector2i &m_size);
-
     graphics::Renderer *m_renderer = nullptr;
 };
 

@@ -11,12 +11,12 @@
 
 namespace reimu::gui {
 
-using CreateTexture = std::function<graphics::Texture *(const Vector2i &)>;
-using AddClipFn = std::function<void(const Rectf &, const Vector2f &, graphics::Texture *)>;
+using CreateTextureFn = std::function<graphics::Texture *(const Vector2i &)>;
+using AddClipFn = std::function<void(const Recti &, const Vector2i &, graphics::Texture *)>;
 
 class Widget {
 public:
-    Widget(CreateTexture create_texture);
+    Widget();
     virtual ~Widget();
 
     void set_parent(Widget *parent);
@@ -33,13 +33,19 @@ public:
     */
     virtual void add_clips(AddClipFn add_clip);
 
+    /**
+     * @brief Signal to the widget and its parents that the layout has changed.
+     */
+    virtual void signal_layout_changed();
+
+    virtual void create_texture_if_needed(CreateTextureFn fn);
+
     Rectf bounds;
 
     LayoutProperties layout;
     CalculatedLayout calculated_layout;
 
 protected:
-    CreateTexture m_create_texture_fn;
     Widget *m_parent = nullptr;
 
     std::unique_ptr<graphics::Surface> m_surface;
@@ -47,27 +53,22 @@ protected:
 
 class Box : public Widget {
 public:
-    Box(CreateTexture create_texture);
-
     void update_layout() override;
 
     void repaint(UIPainter &painter) override;
-
-    void add_child(Widget *child);
     void remove_child(Widget *child) override;
+    void add_clips(AddClipFn add_clip) override;
+    void create_texture_if_needed(CreateTextureFn fn) override;
 
-    void add_clips(
-            std::function<void(const Rectf &, const Vector2f &, graphics::Texture *)> add_clip)
-            override;
+    virtual void add_child(Widget *child);
 
 private:
+    CreateTextureFn m_create_texture_fn;
     std::list<Widget *> m_children;
 };
 
 class Button : public Widget {
 public:
-    Button(CreateTexture create_texture);
-
     void repaint(UIPainter &painter) override;
 
     std::string label;
@@ -76,12 +77,18 @@ public:
 
 class RootContainer : public Box {
 public:
-    RootContainer(CreateTexture create_texture, const Vector2f &viewport_size);
+    RootContainer(const Vector2f &viewport_size);
 
     void update_layout(const Vector2f &viewport_size);
 
+    void signal_layout_changed() override;
+    inline bool needs_layout_update() const {
+        return m_recalculate_layout;
+    }
+
 private:
     Vector2f m_viewport_size;
+    bool m_recalculate_layout = true;
 };
 
 }

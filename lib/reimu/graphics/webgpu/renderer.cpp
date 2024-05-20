@@ -390,13 +390,15 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
 }
 
 void WebGPURenderer::resize_viewport(const Vector2i &size) {
-    logger::debug("resizing viewport!");
-
     m_viewport_size = size;
 
     wgpuSwapChainRelease(m_swap_chain);
 
     create_swap_chain().ensure();
+}
+
+ColorFormat WebGPURenderer::display_surface_color_format() const {
+    return ColorFormat::RGBA8;
 }
 
 void WebGPURenderer::write_texture(const WGPUImageCopyTexture &destination, void const *data,

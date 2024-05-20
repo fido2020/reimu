@@ -25,6 +25,7 @@ public:
         override;
 
     void resize_viewport(const Vector2i &size) override;
+    ColorFormat display_surface_color_format() const override;
     
     void on_destroy_render_pass(RenderPass *render_pass);
     void write_texture(const WGPUImageCopyTexture &destination, void const *data, size_t dataSize,

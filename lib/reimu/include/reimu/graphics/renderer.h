@@ -54,6 +54,13 @@ public:
     virtual void resize_viewport(const Vector2i& size) = 0;
 
     /**
+     * @brief Get the color format used by the display surface
+     * 
+     * @return ColorFormat 
+     */
+    virtual ColorFormat display_surface_color_format() const = 0;
+
+    /**
      * @brief Get the current viewport size in pixels
      * 
      * @return const Vector2i

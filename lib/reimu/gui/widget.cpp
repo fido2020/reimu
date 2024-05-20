@@ -4,9 +4,7 @@
 
 namespace reimu::gui {
 
-Widget::Widget(CreateTexture create_texture)
-    : m_create_texture_fn(create_texture) {
-}
+Widget::Widget() {}
 
 Widget::~Widget() {
     if (m_parent) {
@@ -36,19 +34,31 @@ void Widget::repaint(UIPainter &painter) {
     }
 }
 
-void Widget::add_clips(std::function<void(const Rectf &, const Vector2f &, graphics::Texture *)> add_clip) {
+void Widget::add_clips(AddClipFn add_clip) {
     // If there is a texture, add a clip
     if (m_surface) {
-        auto tex_size = vector_static_cast<float>(m_surface->size());
-        Rectf source_rect = { 0, 0, tex_size.x, tex_size.y };
+        auto tex_size = m_surface->size();
+        Recti source_rect = { 0, 0, tex_size.x, tex_size.y };
 
-        add_clip(source_rect, bounds.top_left(), &m_surface->texture());
+        add_clip(source_rect, vector_static_cast<int>(bounds.top_left()), &m_surface->texture());
     }
 }
 
-Box::Box(CreateTexture create_texture)
-    : Widget(create_texture) {
-    m_surface = std::make_unique<graphics::Surface>(m_create_texture_fn({ 1, 1 }));
+void Widget::signal_layout_changed() {
+    if (m_parent) {
+        m_parent->signal_layout_changed();
+    }
+}
+
+void Widget::create_texture_if_needed(CreateTextureFn fn) {
+    if (!m_surface) {
+        auto tex_size = vector_static_cast<int>(bounds.size());
+        if (tex_size.x <= 0 || tex_size.y <= 0) {
+            tex_size = { 1, 1 };
+        }
+
+        m_surface = std::make_unique<graphics::Surface>(fn(tex_size));
+    }
 }
 
 void Box::update_layout() {
@@ -131,18 +141,33 @@ void Box::repaint(UIPainter &painter) {
     }
 }
 
+void Box::create_texture_if_needed(CreateTextureFn fn) {
+    m_create_texture_fn = fn;
+
+    Widget::create_texture_if_needed(fn);
+
+    for (Widget *child : m_children) {
+        child->create_texture_if_needed(fn);
+    }
+}
+
 void Box::add_child(Widget *child) {
+    signal_layout_changed();
+
     m_children.push_back(child);
 
     child->set_parent(this);
+
+    if (m_create_texture_fn) {
+        child->create_texture_if_needed(m_create_texture_fn);
+    }
 }
 
 void Box::remove_child(Widget *child) {
     m_children.remove(child);
 }
 
-void Box::add_clips(
-        std::function<void(const Rectf &, const Vector2f &, graphics::Texture *)> add_clip) {
+void Box::add_clips(AddClipFn add_clip) {
     Widget::add_clips(add_clip);
 
     for (Widget *child : m_children) {
