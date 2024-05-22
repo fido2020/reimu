@@ -1,8 +1,8 @@
 #include <reimu/core/logger.h>
 
-#include <assert.h>
+#include <reimu/video/driver.h>
 
-#include "driver.h"
+#include <assert.h>
 
 reimu::video::Driver *wayland_init();
 

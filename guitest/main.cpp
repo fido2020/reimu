@@ -1,5 +1,6 @@
 #include <reimu/video/video.h>
-
+#include <reimu/video/driver.h>
+#include <reimu/core/event.h>
 #include <reimu/gui/widget.h>
 #include <reimu/gui/window.h>
 
@@ -35,9 +36,13 @@ int main() {
     root->add_child(btn4);
     root->add_child(btn5);
 
-    for(;;) {
-        win->render();
+    auto event_loop = EventLoop::create().ensure();
+    event_loop->watch_os_handle(video::get_driver()->get_window_client_handle(), []() {
+        video::get_driver()->window_client_dispatch();
+    });
 
-        usleep(1000000);
-    }
+    win->render();
+    event_loop->run();
+
+    return 0;
 }

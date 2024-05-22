@@ -3,12 +3,13 @@
 
 #include <reimu/graphics/vector.h>
 
+#include <reimu/video/driver.h>
+
 #include <wayland-client.h>
 
 #include <assert.h>
 #include <string.h>
 
-#include "../driver.h"
 #include "../egl/egl.h"
 
 #include "driver.h"
@@ -83,6 +84,14 @@ reimu::video::Window *WaylandDriver::window_create(const reimu::Vector2i &size) 
     xdg_toplevel_add_listener(xdg_toplevel, &toplevel_listener, win);
 
     return win;
+}
+
+int WaylandDriver::get_window_client_handle() {
+    return wl_display_get_fd(display);
+}
+
+void WaylandDriver::window_client_dispatch() {
+    wl_display_dispatch(display);
 }
 
 void WaylandDriver::finish() {

@@ -1,8 +1,7 @@
 #include <reimu/video/window.h>
 
+#include <reimu/video/driver.h>
 #include <reimu/video/video.h>
-
-#include "driver.h"
 
 namespace reimu::video {
 
