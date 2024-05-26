@@ -20,7 +20,6 @@ public:
     virtual ~Widget();
 
     void set_parent(Widget *parent);
-    virtual void remove_child(Widget *child);
 
     virtual void update_layout();
     virtual void repaint(UIPainter &painter);
@@ -46,6 +45,8 @@ public:
     CalculatedLayout calculated_layout;
 
 protected:
+    virtual void remove_child(Widget *child);
+
     Widget *m_parent = nullptr;
 
     std::unique_ptr<graphics::Surface> m_surface;
@@ -53,18 +54,49 @@ protected:
 
 class Box : public Widget {
 public:
-    void update_layout() override;
-
-    void repaint(UIPainter &painter) override;
-    void remove_child(Widget *child) override;
+    virtual void repaint(UIPainter &painter) override;
     void add_clips(AddClipFn add_clip) override;
     void create_texture_if_needed(CreateTextureFn fn) override;
 
+protected:
     virtual void add_child(Widget *child);
+    virtual void remove_child(Widget *child) override;
 
-private:
+    virtual Rectf inner_bounds() const;
+
     CreateTextureFn m_create_texture_fn;
     std::list<Widget *> m_children;
+};
+
+class FlowBox : public Box {
+public:
+    void add_child(Widget *child) override;
+
+    void update_layout() override;
+};
+
+class GridBox : public Box {
+public:
+    struct Item {
+        Widget *widget;
+        Size column_size;
+    };
+
+    struct Row {
+        Size size;
+        std::vector<Item> items;
+    };
+
+    GridBox() = default;
+    GridBox(std::vector<Row> grid);
+
+    void add_item(Widget *widget, const Size &column_size);
+    void add_row(const Size &size);
+
+    void update_layout() override;
+
+private:
+    std::vector<Row> m_grid;
 };
 
 class Button : public Widget {
@@ -75,10 +107,11 @@ public:
     bool is_pressed = false;
 };
 
-class RootContainer : public Box {
+class RootContainer : public FlowBox {
 public:
-    RootContainer(const Vector2f &viewport_size);
+    RootContainer(const Vector2f &viewport_size, bool decorate = true);
 
+    void repaint(UIPainter &painter) override;
     void update_layout(const Vector2f &viewport_size);
 
     void signal_layout_changed() override;
@@ -87,8 +120,11 @@ public:
     }
 
 private:
+    Rectf inner_bounds() const override;
+
     Vector2f m_viewport_size;
     bool m_recalculate_layout = true;
+    bool m_decorate = true;
 };
 
 }

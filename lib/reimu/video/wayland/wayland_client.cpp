@@ -92,6 +92,8 @@ int WaylandDriver::get_window_client_handle() {
 
 void WaylandDriver::window_client_dispatch() {
     wl_display_dispatch(display);
+
+    wl_display_flush(display);
 }
 
 void WaylandDriver::finish() {

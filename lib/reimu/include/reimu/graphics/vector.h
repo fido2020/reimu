@@ -21,7 +21,7 @@ template <typename T> struct Vector2 {
     }
 
     ALWAYS_INLINE Vector2<T> normalize() {
-        return (*this) * (1 / sqrt((x * x) + (y * y)));
+        return (*this) * static_cast<T>(1 / sqrt((x * x) + (y * y)));
     }
 
     ALWAYS_INLINE T magnitude() {

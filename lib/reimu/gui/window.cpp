@@ -29,7 +29,7 @@ void Window::render() {
     if (m_root->needs_layout_update()) {
         m_root->update_layout(vector_static_cast<float>(m_renderer->get_viewport_size()));
         
-        UIPainter painter{};
+        DefaultUIPainter painter{};
         m_root->repaint(painter);
 
         m_root->add_clips(m_compositor->get_add_clip_fn());

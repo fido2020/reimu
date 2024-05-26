@@ -2,6 +2,8 @@
 
 #include <reimu/core/logger.h>
 
+#include <assert.h>
+
 namespace reimu::gui {
 
 Widget::Widget() {}
@@ -29,6 +31,10 @@ void Widget::repaint(UIPainter &painter) {
     if (m_surface) {
         auto wanted_size = vector_static_cast<int>(bounds.size());
         if (m_surface->size() != wanted_size) {
+            if (wanted_size.x <= 0 || wanted_size.y <= 0) {
+                wanted_size = { 1, 1 };
+            }
+
             m_surface->resize(wanted_size);
         }
     }
@@ -61,8 +67,66 @@ void Widget::create_texture_if_needed(CreateTextureFn fn) {
     }
 }
 
-void Box::update_layout() {
+void Box::repaint(UIPainter &painter) {
+    Widget::repaint(painter);
+
+    graphics::Painter p(*m_surface);
+    painter.begin(p);
+    painter.draw_background();
+    painter.end();
+
+    // Draw the children
+    for (Widget *child : m_children) {
+        child->repaint(painter);
+    }
+}
+
+void Box::create_texture_if_needed(CreateTextureFn fn) {
+    m_create_texture_fn = fn;
+
+    Widget::create_texture_if_needed(fn);
+
+    for (Widget *child : m_children) {
+        child->create_texture_if_needed(fn);
+    }
+}
+
+void Box::add_child(Widget *child) {
+    signal_layout_changed();
+
+    m_children.push_back(child);
+
+    child->set_parent(this);
+
+    if (m_create_texture_fn) {
+        child->create_texture_if_needed(m_create_texture_fn);
+    }
+}
+
+void Box::remove_child(Widget *child) {
+    m_children.remove(child);
+}
+
+void Box::add_clips(AddClipFn add_clip) {
+    Widget::add_clips(add_clip);
+
+    for (Widget *child : m_children) {
+        child->add_clips(add_clip);
+    }
+}
+
+Rectf Box::inner_bounds() const {
+    return bounds;
+}
+
+void FlowBox::add_child(Widget *child) {
+    Box::add_child(child);
+}
+
+void FlowBox::update_layout() {
     Widget::update_layout();
+
+    auto bounds = inner_bounds();
 
     float combined_width = 0;
     float combined_height = 0;
@@ -71,7 +135,6 @@ void Box::update_layout() {
     for (Widget *child : m_children) {
         // Update the layout for each child
         child->layout.calculate_layout(child->calculated_layout, &calculated_layout);
-        logger::debug("Calculated inner size: {} {}", child->calculated_layout.inner_size.x, child->calculated_layout.inner_size.y);
     
         // Get the size the child is requesting
         auto child_size = child->calculated_layout.outer_size;
@@ -118,8 +181,6 @@ void Box::update_layout() {
                 widget_y + inner_size.y
             };
 
-            logger::debug("x_pos: {} y_pos: {} inner_size.x: {} inner_size.y: {}", x_pos, y_pos, inner_size.x, inner_size.y);
-
             child->bounds = bounds;
 
             x_pos += child->calculated_layout.outer_size.x;
@@ -129,49 +190,110 @@ void Box::update_layout() {
     }
 }
 
-void Box::repaint(UIPainter &painter) {
-    Widget::repaint(painter);
+GridBox::GridBox(std::vector<Row> grid)
+    : m_grid(std::move(grid)) {}
 
-    graphics::Painter p(*m_surface);
-    p.draw_rect({ 0, 0, bounds.width(), bounds.height() }, { 255, 0, 128, 255 });
+void GridBox::add_item(Widget *widget, const Size &column_size) {
+    assert(!m_grid.empty());
 
-    // Draw the children
-    for (Widget *child : m_children) {
-        child->repaint(painter);
+    m_grid.back().items.push_back({ widget, column_size });
+
+    add_child(widget);
+}
+
+void GridBox::add_row(const Size &size) {
+    m_grid.push_back({ size, {} });
+}
+
+void GridBox::update_layout() {
+    Widget::update_layout();
+
+    auto bounds = inner_bounds();
+
+    // Add the widths and heights of the rows and columns,
+    // and add up the 'factors' which are used to calculate what proportion of the available
+    // space each row and column should take up
+    
+    // e.g. If there is an item with a factor of 1 and another of a factor of 2,
+    // the first item will take up 1/3 of the space and the second will take up 2/3 of the space
+
+    float combined_height = 0;
+    float combined_y_factor = 0;
+
+    std::vector<float> combined_widths;
+    std::vector<float> combined_x_factors;
+
+    for (auto &row : m_grid) {
+        if (row.size.unit == LayoutUnit::LayoutFactor) {
+            combined_y_factor += row.size.value;
+        } else {
+            combined_height += row.size.as_pixels(bounds.width(), calculated_layout);
+        }
+
+        float combined_width = 0;
+        float combined_x_factor = 0;
+
+        // Update the layout for each child whilst doing the calculations
+        for (auto &item : row.items) {
+            auto *child = item.widget;
+            child->layout.calculate_layout(child->calculated_layout, &calculated_layout);
+
+            if (item.column_size.unit == LayoutUnit::LayoutFactor) {
+                combined_x_factor += item.column_size.value;
+            } else {
+                combined_width += item.column_size.as_pixels(bounds.x, calculated_layout);
+            }
+        }
+
+        combined_widths.push_back(combined_width);
+        combined_x_factors.push_back(combined_x_factor);
     }
-}
 
-void Box::create_texture_if_needed(CreateTextureFn fn) {
-    m_create_texture_fn = fn;
+    float x_pos = bounds.x;
+    float y_pos = bounds.y;
 
-    Widget::create_texture_if_needed(fn);
+    // Now we decide how we want to lay out the children
+    for (size_t y = 0; y < m_grid.size(); y++) {
+        // Get the rows items and calculate its height in pixels
+        auto &items = m_grid[y].items;
+        float row_height = m_grid[y].size.as_pixels(bounds.height(), calculated_layout);
 
-    for (Widget *child : m_children) {
-        child->create_texture_if_needed(fn);
-    }
-}
+        float space = bounds.width() - combined_widths[y];
+        float factor = combined_x_factors[y];
 
-void Box::add_child(Widget *child) {
-    signal_layout_changed();
+        for (auto &item : items) {
+            float column_width = 0;
+            if (item.column_size.unit == LayoutUnit::LayoutFactor) {
+                // Calculate the width of the column based on the available space
+                column_width = item.column_size.value / factor * space;
+            } else {
+                column_width = item.column_size.as_pixels(bounds.width(), calculated_layout);
+            }
 
-    m_children.push_back(child);
+            auto *child = item.widget;
+            const auto &child_layout = child->calculated_layout;
 
-    child->set_parent(this);
+            float widget_x = x_pos + child_layout.left_padding;
+            float widget_y = y_pos + child_layout.top_padding;
 
-    if (m_create_texture_fn) {
-        child->create_texture_if_needed(m_create_texture_fn);
-    }
-}
+            float widget_x2 = x_pos + column_width - child_layout.right_padding;
+            float widget_y2 = widget_y + row_height - child_layout.bottom_padding;
 
-void Box::remove_child(Widget *child) {
-    m_children.remove(child);
-}
+            Rectf bounds = {
+                widget_x,
+                widget_y,
+                widget_x2,
+                widget_y2
+            };
 
-void Box::add_clips(AddClipFn add_clip) {
-    Widget::add_clips(add_clip);
+            child->bounds = bounds;
+            child->update_layout();
 
-    for (Widget *child : m_children) {
-        child->add_clips(add_clip);
+            x_pos += column_width;
+        }
+
+        x_pos = bounds.x;
+        y_pos += row_height;
     }
 }
 

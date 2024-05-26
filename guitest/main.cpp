@@ -30,11 +30,23 @@ int main() {
     btn4->layout = btn1->layout;
     btn5->layout = btn1->layout;
 
-    root->add_child(btn1);
-    root->add_child(btn2);
-    root->add_child(btn3);
-    root->add_child(btn4);
-    root->add_child(btn5);
+    auto *grid = new gui::GridBox();
+
+    root->add_child(grid);
+
+    grid->add_row(gui::Size::from_pixels(50));
+
+    grid->add_item(btn1, gui::Size::from_percent(0.5));
+    grid->add_item(btn2, gui::Size::from_percent(0.5));
+
+    grid->add_row(gui::Size::from_pixels(50));
+
+    grid->add_item(btn3, gui::Size::from_percent(0.5));
+    grid->add_item(btn4, gui::Size::from_percent(0.5));
+
+    grid->add_row(gui::Size::from_pixels(50));
+
+    grid->add_item(btn5, gui::Size::from_percent(0.5));
 
     auto event_loop = EventLoop::create().ensure();
     event_loop->watch_os_handle(video::get_driver()->get_window_client_handle(), []() {

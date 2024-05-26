@@ -29,6 +29,7 @@ enum class LayoutUnit {
     Percent,
     RootEm,
     Em,
+    LayoutFactor
 };
 
 enum class ContentJustify {
@@ -72,9 +73,14 @@ struct Size {
         return Size { value, LayoutUnit::Em };
     }
 
+    static consteval Size from_layout_factor(float value) {
+        return Size { value, LayoutUnit::LayoutFactor };
+    }
+
     float as_pixels(float parent_value, const CalculatedLayout &parent) {
         switch(unit) {
             case LayoutUnit::Zero:
+            case LayoutUnit::LayoutFactor:
                 return 0;
             case LayoutUnit::Pixels:
                 return value;

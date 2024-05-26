@@ -3,6 +3,7 @@ target_sources(reimu PRIVATE
     compositor.cpp
     layout.cpp
     root.cpp
+    style.cpp
     widget.cpp
     window.cpp
 )

@@ -22,6 +22,18 @@ struct Rect : public Vector4<T> {
         return { this->x, this->y };
     }
 
+    inline Vector2<T> top_right() const {
+        return { this->z, this->y };
+    }
+
+    inline Vector2<T> bottom_right() const {
+        return { this->z, this->w };
+    }
+
+    inline Vector2<T> bottom_left() const {
+        return { this->x, this->w };
+    }
+
     inline Vector2<T> size() const {
         return { width(), height() };
     }
