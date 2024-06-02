@@ -21,8 +21,13 @@ public:
 
     RootContainer &root() { return *m_root; }
 
+    bool is_open() const { return m_is_open; }
+    void close() { m_is_open = false; }
+
 private:
     Window(video::Window *window, graphics::Renderer *renderer);
+
+    bool m_is_open = true;
 
     CreateTextureFn m_create_texture_fn;
 

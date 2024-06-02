@@ -1,10 +1,12 @@
 #pragma once
 
+#include <reimu/core/string_id.h>
 #include <reimu/core/result.h>
 #include <reimu/os/error.h>
 
 #include <functional>
 #include <queue>
+#include <map>
 
 namespace reimu {
 
@@ -12,8 +14,11 @@ using EventCallback = std::function<void()>;
 
 class EventDispatcher {
 public:
-    void bind_event(const std::string &event_name, EventCallback callback);
-    void dispatch_event(const std::string &event_name);
+    void bind_event_callback(StringID event_id, EventCallback callback);
+    void dispatch_event(StringID event_name);
+
+private:
+    std::map<StringID, EventCallback> m_event_callbacks;
 };
 
 class EventLoop {

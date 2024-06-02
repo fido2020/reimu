@@ -241,7 +241,7 @@ void GridBox::update_layout() {
             if (item.column_size.unit == LayoutUnit::LayoutFactor) {
                 combined_x_factor += item.column_size.value;
             } else {
-                combined_width += item.column_size.as_pixels(bounds.x, calculated_layout);
+                combined_width += item.column_size.as_pixels(bounds.width(), calculated_layout);
             }
         }
 
@@ -276,8 +276,8 @@ void GridBox::update_layout() {
             float widget_x = x_pos + child_layout.left_padding;
             float widget_y = y_pos + child_layout.top_padding;
 
-            float widget_x2 = x_pos + column_width - child_layout.right_padding;
-            float widget_y2 = widget_y + row_height - child_layout.bottom_padding;
+            float widget_x2 = x_pos + column_width - child_layout.left_padding - child_layout.right_padding;
+            float widget_y2 = widget_y + row_height - child_layout.top_padding - child_layout.bottom_padding;
 
             Rectf bounds = {
                 widget_x,

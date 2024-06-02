@@ -8,6 +8,7 @@ pkg_check_modules(wayland REQUIRED wayland-server wayland-client wayland-egl)
 pkg_check_modules(egl REQUIRED egl)
 
 add_library(reimu SHARED
+    event.cpp
     lib.cpp
 )
 

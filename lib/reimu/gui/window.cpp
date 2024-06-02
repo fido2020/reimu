@@ -19,6 +19,10 @@ Window::Window(video::Window *window, graphics::Renderer *renderer)
             .ensure();
     };
 
+    m_raw_window->bind_event_callback("wm_close"_hashid, [this]() {
+        close();
+    });
+
     m_compositor = std::make_unique<Compositor>(renderer);
 
     m_root = std::make_unique<RootContainer>(vector_static_cast<float>(renderer->get_viewport_size()));

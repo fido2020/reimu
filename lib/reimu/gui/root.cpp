@@ -32,6 +32,12 @@ void RootContainer::update_layout(const Vector2f &viewport_size) {
     calculated_layout.inner_size = m_viewport_size -
         Vector2f { calculated_layout.left_padding + calculated_layout.right_padding,
             calculated_layout.top_padding + calculated_layout.bottom_padding };
+   
+    if (m_decorate) {
+        // TODO: use Style object
+        calculated_layout.inner_size -= {6, 6 + 24 + 2};
+    }
+
     calculated_layout.outer_size = m_viewport_size;
 
     bounds = {0, 0, viewport_size.x, viewport_size.y};
@@ -46,8 +52,8 @@ void RootContainer::signal_layout_changed() {
 Rectf RootContainer::inner_bounds() const {
     if (m_decorate) {
         // TODO: use Style object
-        return Rectf::from_size({3, 3 + 24 + 2},
-            {m_viewport_size.x - 6, m_viewport_size.y - 3 - 24 - 1});
+        return {3, 3 + 24 + 2,
+            m_viewport_size.x - 3, m_viewport_size.y - 3};
     }
     
     return {0, 0, m_viewport_size.x, m_viewport_size.y};
