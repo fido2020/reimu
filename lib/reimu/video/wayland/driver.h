@@ -2,11 +2,12 @@
 
 #include <reimu/core/logger.h>
 #include <reimu/video/driver.h>
+#include <reimu/video/input.h>
 
 #include <assert.h>
 #include <wayland-client.h>
 
-#include "../egl/egl.h"
+#include <list>
 
 #include "xdg-shell-client-protocol.h"
 
@@ -27,4 +28,15 @@ public:
     wl_registry *registry = nullptr;
     wl_compositor *compositor = nullptr;
     xdg_wm_base *wm_base = nullptr;
+    
+    wl_seat *seat = nullptr;
+    wl_pointer *pointer = nullptr;
+    wl_keyboard *keyboard = nullptr;
+
+    // Mouse events get formed over multiple Wayland events,
+    // keep track of event data and which window is active
+    reimu::video::MouseEvent mouse_event;
+    class WaylandWindow *mouse_window = nullptr;
+
+    std::list<class WaylandWindow *> windows; 
 };

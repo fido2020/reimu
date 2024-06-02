@@ -46,6 +46,10 @@ int main() {
     grid->add_item(btn4, gui::Size::from_layout_factor(1));
     grid->add_item(btn5, gui::Size::from_layout_factor(1));
 
+    btn1->bind_event_callback("on_click"_hashid, [win]() {
+        win->close();
+    });
+
     auto event_loop = EventLoop::create().ensure();
     event_loop->watch_os_handle(video::get_driver()->get_window_client_handle(), [&win, &event_loop]() {
         video::get_driver()->window_client_dispatch();

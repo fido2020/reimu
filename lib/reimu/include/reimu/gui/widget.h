@@ -1,5 +1,6 @@
 #pragma once
 
+#include <reimu/core/event.h>
 #include <reimu/graphics/renderer.h>
 #include <reimu/graphics/surface.h>
 #include <reimu/graphics/vector.h>
@@ -14,12 +15,22 @@ namespace reimu::gui {
 using CreateTextureFn = std::function<graphics::Texture *(const Vector2i &)>;
 using AddClipFn = std::function<void(const Recti &, const Vector2i &, graphics::Texture *)>;
 
-class Widget {
+class Widget : public EventDispatcher {
 public:
     Widget();
     virtual ~Widget();
 
     void set_parent(Widget *parent);
+
+    /**
+     * @brief Get the widget at a given position.
+     * 
+     * Returns a pointer to itself or a child located at 'pos'.
+     * 
+     * @param pos 
+     * @return Widget* 
+     */
+    virtual Widget *get_widget_at(const Vector2f &pos);
 
     virtual void update_layout();
     virtual void repaint(UIPainter &painter);
@@ -54,7 +65,10 @@ protected:
 
 class Box : public Widget {
 public:
+    Widget *get_widget_at(const Vector2f &pos) override;
+
     virtual void repaint(UIPainter &painter) override;
+
     void add_clips(AddClipFn add_clip) override;
     void create_texture_if_needed(CreateTextureFn fn) override;
 
@@ -101,6 +115,7 @@ private:
 
 class Button : public Widget {
 public:
+    Button();
     void repaint(UIPainter &painter) override;
 
     std::string label;

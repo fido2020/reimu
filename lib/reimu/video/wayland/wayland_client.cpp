@@ -1,9 +1,9 @@
 #include <reimu/core/logger.h>
 #include <reimu/core/result.h>
-
 #include <reimu/graphics/vector.h>
-
 #include <reimu/video/driver.h>
+
+#include <linux/input-event-codes.h>
 
 #include <wayland-client.h>
 
@@ -29,9 +29,22 @@ static void xdg_toplevel_configure_bounds(void *data, xdg_toplevel *xdg_toplevel
 static void xdg_toplevel_wm_capabilities(void *data, xdg_toplevel *xdg_toplevel,
         wl_array *capabilities);
 
+static void wl_seat_capabilities(void *data, struct wl_seat *seat, uint32_t capabilities);
+static void wl_seat_name(void *data, struct wl_seat *seat, const char *name);
+
 static void registry_handler(void *data, struct wl_registry *registry, uint32_t name,
         const char *interface, uint32_t version);
 static void registry_remove_handler(void *data, struct wl_registry *registry, uint32_t name);
+
+static void pointer_enter(void *data, struct wl_pointer *pointer, uint32_t serial,
+        struct wl_surface *surface, wl_fixed_t surface_x, wl_fixed_t surface_y);
+static void pointer_leave(void *data, struct wl_pointer *pointer, uint32_t serial,
+        struct wl_surface *surface);
+static void pointer_move(void *data, struct wl_pointer *pointer, uint32_t time,
+        wl_fixed_t surface_x, wl_fixed_t surface_y);
+static void pointer_button(void *data, struct wl_pointer *pointer, uint32_t serial,
+        uint32_t time, uint32_t button, uint32_t state);
+static void pointer_frame(void *data, struct wl_pointer *pointer);
 
 static const xdg_wm_base_listener wm_base_listener = {
     .ping = xdg_ping,
@@ -51,6 +64,23 @@ static const xdg_toplevel_listener toplevel_listener = {
     .close = xdg_toplevel_close,
     .configure_bounds = xdg_toplevel_configure_bounds,
     .wm_capabilities = xdg_toplevel_wm_capabilities
+};
+
+static const wl_seat_listener seat_listener = {
+    .capabilities = wl_seat_capabilities,
+    .name = wl_seat_name
+};
+
+static const wl_pointer_listener pointer_listener = {
+    .enter = pointer_enter,
+    .leave = pointer_leave,
+    .motion = pointer_move,
+    .button = pointer_button,
+    .axis = nullptr,
+    .frame = pointer_frame,
+    .axis_source = nullptr,
+    .axis_stop = nullptr,
+    .axis_discrete = nullptr
 };
 
 reimu::video::Window *WaylandDriver::window_create(const reimu::Vector2i &size) {  
@@ -80,8 +110,12 @@ reimu::video::Window *WaylandDriver::window_create(const reimu::Vector2i &size) 
         size
     };
 
+    wl_surface_set_user_data(surface, win);
+
     xdg_surface_add_listener(xdg_surface, &surface_listener, win);
     xdg_toplevel_add_listener(xdg_toplevel, &toplevel_listener, win);
+
+    windows.push_back(win);
 
     return win;
 }
@@ -92,6 +126,12 @@ int WaylandDriver::get_window_client_handle() {
 
 void WaylandDriver::window_client_dispatch() {
     wl_display_dispatch(display);
+
+    for (auto &win : windows) {
+        if (win->has_event()) {
+            win->dispatch_event("wm_input"_hashid);
+        }
+    }
 
     wl_display_flush(display);
 }
@@ -170,18 +210,127 @@ static void xdg_toplevel_configure(void *, xdg_toplevel *, int32_t width,
     reimu::logger::debug("width: {}, height: {}", width, height);
 }
 
-static void xdg_toplevel_close(void *, xdg_toplevel *) {
+static void xdg_toplevel_close(void *data, xdg_toplevel *) {
     reimu::logger::debug("user wants to close window");
+
+    auto *win = (WaylandWindow *)data;
+
+    win->dispatch_event("wm_close"_hashid);
 }
 
-static void xdg_toplevel_configure_bounds(void *, xdg_toplevel *,
-        int32_t width, int32_t height) {
+static void xdg_toplevel_configure_bounds(void *, xdg_toplevel *, int32_t width, int32_t height) {
     reimu::logger::debug("xdg_toplevel_configure_bounds: width: {}, height: {}", width, height);
 }
 
-static void xdg_toplevel_wm_capabilities(void *, xdg_toplevel *,
-        wl_array *) {
+static void xdg_toplevel_wm_capabilities(void *, xdg_toplevel *, wl_array *) {
     reimu::logger::debug("xdg_toplevel_wm_capabilities");
+}
+
+static void wl_seat_capabilities(void *data, struct wl_seat *seat, uint32_t capabilities) {
+    auto *d = (WaylandDriver *)data;
+
+    if (capabilities & WL_SEAT_CAPABILITY_POINTER) {
+        d->pointer = wl_seat_get_pointer(seat);
+
+        wl_pointer_add_listener(d->pointer, &pointer_listener, d);
+    } else if (d->pointer) {
+        wl_pointer_release(d->pointer);
+
+        d->pointer = nullptr;
+    }
+
+    if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD) {
+        d->keyboard = wl_seat_get_keyboard(seat);
+    } else if (d->keyboard) {
+        wl_keyboard_release(d->keyboard);
+
+        d->keyboard = nullptr;
+    }
+}
+
+static void wl_seat_name(void *data, struct wl_seat *seat, const char *name) {
+    auto *d = (WaylandDriver *)data;
+    reimu::logger::debug("wl_seat_name: '{}'", name);
+}
+
+static void pointer_enter(void *data, struct wl_pointer *pointer, uint32_t serial,
+        struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y) {
+    auto *d = (WaylandDriver *)data;
+
+    auto *win = (WaylandWindow *)wl_surface_get_user_data(surface);
+
+    d->mouse_event = {};
+    d->mouse_window = win;
+
+    d->mouse_event.is_enter = true;
+
+    d->mouse_event.pos = {
+        static_cast<float>(wl_fixed_to_double(x)),
+        static_cast<float>(wl_fixed_to_double(y))
+    };
+}
+
+static void pointer_leave(void *data, struct wl_pointer *pointer, uint32_t serial,
+        struct wl_surface *surface) {
+    auto *d = (WaylandDriver *)data;
+
+    d->mouse_event.is_leave = true;
+}
+
+static void pointer_move(void *data, struct wl_pointer *pointer, uint32_t serial,
+        wl_fixed_t x, wl_fixed_t y) {
+    auto *d = (WaylandDriver *)data;
+
+    d->mouse_event.is_move = true;
+
+    d->mouse_event.pos = {
+        static_cast<float>(wl_fixed_to_double(x)),
+        static_cast<float>(wl_fixed_to_double(y))
+    };
+}
+
+static void pointer_button(void *data, struct wl_pointer *pointer, uint32_t serial,
+        uint32_t time, uint32_t button, uint32_t state) {
+    auto *d = (WaylandDriver *)data;
+
+    d->mouse_event.is_button = true;
+    
+    switch (button) {
+        case BTN_MIDDLE:
+            d->mouse_event.button = reimu::video::MouseButton::Middle;
+            break;
+        case BTN_RIGHT:
+            d->mouse_event.button = reimu::video::MouseButton::Right;
+            break;
+        case BTN_LEFT:
+        default:
+            d->mouse_event.button = reimu::video::MouseButton::Left;
+            break;
+    }
+
+    if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+        d->mouse_event.state = reimu::video::MouseButtonState::Pressed;
+    } else {
+        d->mouse_event.state = reimu::video::MouseButtonState::Released;
+    }
+}
+
+static void pointer_frame(void *data, struct wl_pointer *pointer) {
+    auto *d = (WaylandDriver *)data;
+
+    // If we received this event, we have recieved a full mouse event
+    auto *win = d->mouse_window;
+    if (win) {
+        win->queue_input_event({
+            .type = reimu::video::InputEvent::Mouse,
+            .mouse = d->mouse_event
+        });
+
+        // Check if the mouse has left the window
+        if (d->mouse_event.is_leave) {
+            d->mouse_window = nullptr;
+        }
+    }
 }
 
 static void registry_handler(void *data, struct wl_registry *registry, uint32_t name,
@@ -197,9 +346,12 @@ static void registry_handler(void *data, struct wl_registry *registry, uint32_t 
         d->wm_base = (xdg_wm_base *)wl_registry_bind(registry, name, &xdg_wm_base_interface,
             version);
         xdg_wm_base_add_listener(d->wm_base, &wm_base_listener, d);
+    } else if (strcmp(interface, wl_seat_interface.name) == 0) {
+        d->seat = (wl_seat *)wl_registry_bind(registry, name, &wl_seat_interface, version);
+        wl_seat_add_listener(d->seat, &seat_listener, d);
     }
 }
 
 static void registry_remove_handler(void *, struct wl_registry *, uint32_t) {
-
+    
 }

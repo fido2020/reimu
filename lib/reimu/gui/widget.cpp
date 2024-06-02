@@ -18,6 +18,10 @@ void Widget::set_parent(Widget *parent) {
     m_parent = parent;
 }
 
+Widget *Widget::get_widget_at(const Vector2f &pos) {
+    return this;
+}
+
 void Widget::remove_child(Widget *child) {
     logger::fatal("Invalid Widget::remove_child");
 }
@@ -65,6 +69,16 @@ void Widget::create_texture_if_needed(CreateTextureFn fn) {
 
         m_surface = std::make_unique<graphics::Surface>(fn(tex_size));
     }
+}
+
+Widget *Box::get_widget_at(const Vector2f &pos) {
+    for (Widget *child : m_children) {
+        if (child->bounds.contains(pos)) {
+            return child->get_widget_at(pos);
+        }
+    }
+
+    return this;
 }
 
 void Box::repaint(UIPainter &painter) {

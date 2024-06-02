@@ -24,8 +24,12 @@ public:
     bool is_open() const { return m_is_open; }
     void close() { m_is_open = false; }
 
+    const Vector2f &pointer() const { return m_pointer; }
+
 private:
     Window(video::Window *window, graphics::Renderer *renderer);
+
+    void process_input();
 
     bool m_is_open = true;
 
@@ -36,6 +40,8 @@ private:
     std::unique_ptr<graphics::Renderer> m_renderer;
 
     std::unique_ptr<Compositor> m_compositor;
+
+    Vector2f m_pointer = {0, 0};
 };
 
 }

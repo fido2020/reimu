@@ -15,6 +15,10 @@ public:
             xdg_toplevel *xdg_toplevel, const reimu::Vector2i &size) : driver(driver),
             surface(surface), xdg_surface(xdg_surface), xdg_toplevel(xdg_toplevel), size(size) {}
 
+    ~WaylandWindow() {
+        driver.windows.remove(this);
+    }
+
     void set_size(const reimu::Vector2i &size) override {
         this->size = size;
 

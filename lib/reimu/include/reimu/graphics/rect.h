@@ -46,6 +46,10 @@ struct Rect : public Vector4<T> {
 
         return { x1, y1, x2, y2 };
     }
+
+    inline bool contains(const Vector2<T> &point) const {
+        return point.x >= this->x && point.x <= this->z && point.y >= this->y && point.y <= this->w;
+    }
 };
 
 using Rectf = Rect<float>;

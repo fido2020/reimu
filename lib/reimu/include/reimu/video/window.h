@@ -1,10 +1,13 @@
 #pragma once
 
+#include <reimu/core/event.h>
 #include <reimu/core/result.h>
 #include <reimu/graphics/renderer.h>
 #include <reimu/graphics/vector.h>
+#include <reimu/video/input.h>
 
 #include <string>
+#include <queue>
 
 namespace reimu::video {
 
@@ -29,7 +32,7 @@ struct NativeWindowHandle {
     };
 };
 
-class Window {
+class Window : public EventDispatcher {
 public:
     class Builder {
     public:
@@ -122,8 +125,28 @@ public:
         m_renderer = r;
     }
 
+    void queue_input_event(InputEvent ev) {
+        m_input_queue.push(ev);
+    }
+    
+    bool has_event() const {
+        return !m_input_queue.empty();
+    }
+
+    bool get_event(InputEvent &ev) {
+        if (m_input_queue.empty()) {
+            return false;
+        }
+
+        ev = m_input_queue.front();
+        m_input_queue.pop();
+    
+        return true;
+    }
+
 private:
     graphics::Renderer *m_renderer = nullptr;
+    std::queue<InputEvent> m_input_queue;
 };
 
 }
