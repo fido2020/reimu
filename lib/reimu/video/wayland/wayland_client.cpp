@@ -6,6 +6,7 @@
 #include <linux/input-event-codes.h>
 
 #include <wayland-client.h>
+#include <wayland-cursor.h>
 
 #include <assert.h>
 #include <string.h>
@@ -187,13 +188,35 @@ reimu::video::Driver *wayland_init() {
     // buffers, whereas through xdg-shell protocol we can assign attributes such as a title
     // to our windows.
 
-    if (!(d->compositor && d->wm_base)) {
+    if (!(d->compositor && d->wm_base && d->shm)) {
         d->finish();
         delete d;
 
         reimu::logger::fatal("Failed to create wayland bindings");
     }
-    
+
+    if (d->seat) {
+        auto *cursor_theme = wl_cursor_theme_load(nullptr, 24, d->shm);
+        assert(cursor_theme);
+
+        auto *cursor = wl_cursor_theme_get_cursor(cursor_theme, "left_ptr");
+        assert(cursor);
+
+        auto *cursor_buffer = wl_cursor_image_get_buffer(cursor->images[0]);
+        assert(cursor_buffer);
+
+        auto *cursor_surface = wl_compositor_create_surface(d->compositor);
+        assert(cursor_surface);
+
+        wl_surface_attach(cursor_surface, cursor_buffer, 0, 0);
+        wl_surface_commit(cursor_surface);
+
+        d->cursor_theme = cursor_theme;
+        d->cursor = cursor;
+        d->cursor_buffer = cursor_buffer;
+        d->cursor_surface = cursor_surface;
+    }
+
     return d;
 }
 
@@ -209,9 +232,17 @@ static void xdg_surface_configure(void *data, xdg_surface *surface, uint32_t ser
     wl_surface_commit(win->surface);
 }
 
-static void xdg_toplevel_configure(void *, xdg_toplevel *, int32_t width,
+static void xdg_toplevel_configure(void *data, xdg_toplevel *, int32_t width,
         int32_t height, struct wl_array *) {
     reimu::logger::debug("width: {}, height: {}", width, height);
+
+    if (width == 0 || height == 0) {
+        return;
+    }
+
+    auto *win = (WaylandWindow *)data;
+
+    win->set_size({width, height});
 }
 
 static void xdg_toplevel_close(void *data, xdg_toplevel *) {
@@ -265,11 +296,17 @@ static void pointer_enter(void *data, struct wl_pointer *pointer, uint32_t seria
 
     d->mouse_window = win;
     d->mouse_event.is_enter = true;
+    d->mouse_serial = serial;
 
     d->mouse_event.pos = {
         static_cast<float>(wl_fixed_to_double(x)),
         static_cast<float>(wl_fixed_to_double(y))
     };
+
+    // Set our cursor image, otherwise the cursor may be misaligned,
+    // or the image may be say a text edit or resize cursor
+    wl_pointer_set_cursor(pointer, serial, d->cursor_surface, d->cursor->images[0]->hotspot_x,
+        d->cursor->images[0]->hotspot_y);
 }
 
 static void pointer_leave(void *data, struct wl_pointer *pointer, uint32_t serial,
@@ -277,6 +314,7 @@ static void pointer_leave(void *data, struct wl_pointer *pointer, uint32_t seria
     auto *d = (WaylandDriver *)data;
 
     d->mouse_event.is_leave = true;
+    d->mouse_serial = serial;
 }
 
 static void pointer_move(void *data, struct wl_pointer *pointer, uint32_t serial,
@@ -284,6 +322,7 @@ static void pointer_move(void *data, struct wl_pointer *pointer, uint32_t serial
     auto *d = (WaylandDriver *)data;
 
     d->mouse_event.is_move = true;
+    d->mouse_serial = serial;
 
     d->mouse_event.pos = {
         static_cast<float>(wl_fixed_to_double(x)),
@@ -296,6 +335,7 @@ static void pointer_button(void *data, struct wl_pointer *pointer, uint32_t seri
     auto *d = (WaylandDriver *)data;
 
     d->mouse_event.is_button = true;
+    d->mouse_serial = serial;
     
     switch (button) {
         case BTN_MIDDLE:
@@ -353,6 +393,8 @@ static void registry_handler(void *data, struct wl_registry *registry, uint32_t 
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
         d->seat = (wl_seat *)wl_registry_bind(registry, name, &wl_seat_interface, version);
         wl_seat_add_listener(d->seat, &seat_listener, d);
+    } else if (strcmp(interface, wl_shm_interface.name) == 0) {
+        d->shm = (wl_shm *)wl_registry_bind(registry, name, &wl_shm_interface, version);
     }
 }
 

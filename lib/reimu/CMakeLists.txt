@@ -4,7 +4,7 @@ add_compile_options(-Wall -Wextra -fno-exceptions)
 
 find_package(PkgConfig)
 
-pkg_check_modules(wayland REQUIRED wayland-server wayland-client wayland-egl)
+pkg_check_modules(wayland REQUIRED wayland-server wayland-client wayland-egl wayland-cursor)
 pkg_check_modules(egl REQUIRED egl)
 
 add_library(reimu SHARED

@@ -46,7 +46,6 @@ void Widget::repaint(UIPainter &painter) {
     // Default is to draw nothing, but resize the texture if needed
     if (m_surface) {
         auto wanted_size = vector_static_cast<int>(bounds.size());
-        logger::debug("Widget::repaint: wanted_size = {}, bounds = {}", wanted_size, (Vector4f)bounds);
 
         if (m_surface->size() != wanted_size) {
             if (wanted_size.x <= 0 || wanted_size.y <= 0) {

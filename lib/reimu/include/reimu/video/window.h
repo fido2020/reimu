@@ -114,6 +114,11 @@ public:
     virtual void sync_window() = 0;
 
     /**
+     * @brief Begin an interactive move of the window
+     */
+    virtual void begin_move() = 0;
+
+    /**
      * @brief Get the native handle for the Window object
      * 
      * Guaranteed to be valid for the lifetime of the Window. 

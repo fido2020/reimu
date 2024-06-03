@@ -33,6 +33,16 @@ public:
     wl_pointer *pointer = nullptr;
     wl_keyboard *keyboard = nullptr;
 
+    wl_shm *shm = nullptr;
+
+    struct wl_cursor_theme *cursor_theme = nullptr;
+    struct wl_cursor *cursor = nullptr;
+    wl_buffer *cursor_buffer = nullptr;
+    wl_surface *cursor_surface = nullptr;
+
+    // 'serial' value of the last mouse button event, may be used for dragging the window
+    uint32_t mouse_serial;
+
     // Mouse events get formed over multiple Wayland events,
     // keep track of event data and which window is active
     reimu::video::MouseEvent mouse_event;

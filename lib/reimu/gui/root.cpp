@@ -26,6 +26,14 @@ RootContainer::RootContainer(Window *win, const Vector2f &viewport_size, bool de
     bind_event_callback("ui_repaint"_hashid, [this]() {
         m_repaint = true;
     });
+
+    bind_event_callback("on_mouse_down"_hashid, [this]() {
+        // TODO: use the Style object
+        auto titlebar_rect = Rectf{1 + 3, 1 + 3, m_viewport_size.x - 1 - 3, (float)24 + 1 + 3};
+        if (titlebar_rect.contains(m_window->pointer())) {
+            m_window->begin_move();
+        }
+    });
 }
 
 void RootContainer::repaint(UIPainter &painter) {
@@ -78,10 +86,6 @@ void RootContainer::update_layout(const Vector2f &viewport_size) {
             float new_xpos = xpos - control->calculated_layout.outer_size.x;
             control->bounds = {new_xpos, ypos,
                 xpos, ypos + control->calculated_layout.inner_size.y};
-
-            logger::debug("Control bounds: {} {} {} {}",
-                control->bounds.x, control->bounds.y,
-                control->bounds.z, control->bounds.w);
 
             xpos = new_xpos - 2;
         }

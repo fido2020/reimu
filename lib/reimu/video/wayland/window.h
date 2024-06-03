@@ -23,8 +23,8 @@ public:
         this->size = size;
 
         xdg_surface_set_window_geometry(xdg_surface, 0, 0, size.x, size.y);
-
         wl_surface_damage_buffer(surface, 0, 0, size.x, size.y);
+        wl_surface_commit(surface);
 
         sync_window();
 
@@ -57,6 +57,11 @@ public:
 
     void sync_window() override {
         driver.display_roundtrip();
+    }
+
+    void begin_move() override {
+        reimu::logger::debug("begin move");
+        xdg_toplevel_move(xdg_toplevel, driver.seat, driver.mouse_serial);
     }
 
     reimu::Result<reimu::video::NativeWindowHandle *, reimu::ReimuError> get_native_handle()

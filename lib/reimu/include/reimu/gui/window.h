@@ -24,6 +24,8 @@ public:
     bool is_open() const { return m_is_open; }
     void close() { m_is_open = false; }
 
+    void begin_move() { m_raw_window->begin_move(); }
+
     const Vector2f &pointer() const { return m_pointer; }
 
 private:
