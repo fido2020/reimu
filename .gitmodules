@@ -1,0 +1,3 @@
+[submodule "thirdparty/freetype"]
+	path = thirdparty/freetype
+	url = git@github.com:freetype/freetype.git
