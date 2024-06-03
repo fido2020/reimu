@@ -100,8 +100,6 @@ reimu::video::Window *WaylandDriver::window_create(const reimu::Vector2i &size) 
         reimu::logger::fatal("Failed to get XDG toplevel");
     }
 
-    wl_surface_commit(surface);
-
     auto *win = new WaylandWindow {
         *this,
         surface,
@@ -114,6 +112,12 @@ reimu::video::Window *WaylandDriver::window_create(const reimu::Vector2i &size) 
 
     xdg_surface_add_listener(xdg_surface, &surface_listener, win);
     xdg_toplevel_add_listener(xdg_toplevel, &toplevel_listener, win);
+
+    wl_surface_commit(surface);
+
+    wl_display_roundtrip(display);
+
+    win->set_size(size);
 
     windows.push_back(win);
 
@@ -259,9 +263,7 @@ static void pointer_enter(void *data, struct wl_pointer *pointer, uint32_t seria
 
     auto *win = (WaylandWindow *)wl_surface_get_user_data(surface);
 
-    d->mouse_event = {};
     d->mouse_window = win;
-
     d->mouse_event.is_enter = true;
 
     d->mouse_event.pos = {
@@ -331,6 +333,8 @@ static void pointer_frame(void *data, struct wl_pointer *pointer) {
             d->mouse_window = nullptr;
         }
     }
+
+    d->mouse_event = {};
 }
 
 static void registry_handler(void *data, struct wl_registry *registry, uint32_t name,

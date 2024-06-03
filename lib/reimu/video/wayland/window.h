@@ -41,6 +41,12 @@ public:
         return size;
     }
 
+    void render() override {
+        if (m_renderer) {
+            m_renderer->render();
+        }
+    }
+
     void show_window() override {
 
     }

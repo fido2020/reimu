@@ -30,10 +30,13 @@ private:
     Window(video::Window *window, graphics::Renderer *renderer);
 
     void process_input();
+    void set_mouse_widget(Widget *widget);
 
     bool m_is_open = true;
 
     CreateTextureFn m_create_texture_fn;
+
+    Widget *m_mouse_widget = nullptr;
 
     std::unique_ptr<RootContainer> m_root;
     std::unique_ptr<video::Window> m_raw_window;

@@ -107,6 +107,8 @@ public:
      */
     virtual Vector2i get_size() const = 0;
 
+    virtual void render() = 0;
+
     virtual void show_window() = 0;
     virtual void hide_window() = 0;
     virtual void sync_window() = 0;
@@ -144,7 +146,7 @@ public:
         return true;
     }
 
-private:
+protected:
     graphics::Renderer *m_renderer = nullptr;
     std::queue<InputEvent> m_input_queue;
 };

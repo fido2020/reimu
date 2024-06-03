@@ -3,6 +3,7 @@
 #include <reimu/core/util.h>
 
 #include <cmath>
+#include <format>
 
 namespace reimu {
 
@@ -117,3 +118,27 @@ using Vector4i = Vector4<int>;
 using Vector4u = Vector4<unsigned int>;
 
 }
+
+template<typename T>
+struct std::formatter<reimu::Vector2<T>> {
+    constexpr auto parse(std::format_parse_context &ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FmtCtx>
+    auto format(const reimu::Vector2<T> &v, FmtCtx &ctx) const {
+        return std::format_to(ctx.out(), "({}, {})", v.x, v.y);
+    }
+};
+
+template<typename T>
+struct std::formatter<reimu::Vector4<T>> {
+    constexpr auto parse(std::format_parse_context &ctx) {
+        return ctx.begin();
+    }
+
+    template<typename FmtCtx>
+    auto format(const reimu::Vector4<T> &v, FmtCtx &ctx) const {
+        return std::format_to(ctx.out(), "({}, {}, {}, {})", v.x, v.y, v.z, v.w);
+    }
+};

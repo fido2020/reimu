@@ -77,11 +77,19 @@ void DefaultUIPainter::draw_button(std::string label, bool is_pressed) {
 
     auto button_rect = Rectf{0, 0, size.x, size.y};
 
-    painter.draw_rect(button_rect, style.background_color)
-        .draw_rect({0, 0, size.x, 1}, style.highlight_color)
-        .draw_rect({0, 0, 1, size.y}, style.highlight_color)
-        .draw_rect({size.x - 1, 0, size.x, size.y}, style.shadow_color)
-        .draw_rect({0, size.y - 1, size.x, size.y}, style.shadow_color);
+    if (is_pressed) {
+        painter.draw_rect(button_rect, style.background_color)
+            .draw_rect({0, 0, size.x, 1}, style.shadow_color)
+            .draw_rect({0, 0, 1, size.y}, style.shadow_color)
+            .draw_rect({size.x - 1, 0, size.x, size.y}, style.shadow_color)
+            .draw_rect({0, size.y - 1, size.x, size.y}, style.shadow_color);
+    } else {
+        painter.draw_rect(button_rect, style.background_color)
+            .draw_rect({0, 0, size.x, 1}, style.highlight_color)
+            .draw_rect({0, 0, 1, size.y}, style.highlight_color)
+            .draw_rect({size.x - 2, 0, size.x, size.y}, style.shadow_color)
+            .draw_rect({0, size.y - 2, size.x, size.y}, style.shadow_color);
+    }
 }
 
 void DefaultUIPainter::draw_background() {

@@ -62,7 +62,6 @@ WebGPURenderPass::~WebGPURenderPass() {
 }
 
 void WebGPURenderPass::update_bindings() {
-    logger::debug("update bindings w layout {:x}", (uintptr_t)bind_layout);
     WGPUBindGroupDescriptor desc = {};
     desc.layout = bind_layout;
     desc.entryCount = m_bind_entries.size();
@@ -80,7 +79,6 @@ void WebGPURenderPass::update_bindings() {
     if (m_pass_encoder) {
         wgpuRenderPassEncoderSetBindGroup(m_pass_encoder, 0, m_bind_group, 0, nullptr);
     }
-    logger::debug("updated bindings, group {:x}", (uintptr_t)bind_layout);
 }
 
 void WebGPURenderPass::render(WGPUTextureView output, WGPUCommandEncoder encoder) {

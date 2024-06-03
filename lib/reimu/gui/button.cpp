@@ -6,16 +6,21 @@ Button::Button() {
     bind_event_callback("on_mouse_down"_hashid, [this]() {
         is_pressed = true;
 
-        // TODO: request repaint without a layout change
-        signal_layout_changed();
+        dispatch_event("ui_repaint"_hashid);
     });
 
     bind_event_callback("on_mouse_up"_hashid, [this]() {
         if (is_pressed) {
             dispatch_event("on_click"_hashid);
-        }
 
+            is_pressed = false;
+            dispatch_event("ui_repaint"_hashid);
+        }
+    });
+
+    bind_event_callback("on_mouse_leave"_hashid, [this]() {
         is_pressed = false;
+        dispatch_event("ui_repaint"_hashid);
     });
 }
 

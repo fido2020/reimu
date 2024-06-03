@@ -298,8 +298,6 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
         for (int i = 0; i < num_bindings; i++) {
             auto entry = convert_binding_definition(bindings[i]);
 
-            logger::debug("entry stage: {}", entry.visibility);
-
             bind_group_layout_entries.push_back(entry);
         }
 

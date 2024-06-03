@@ -6,7 +6,13 @@
 
 namespace reimu::gui {
 
-Widget::Widget() {}
+Widget::Widget() {
+    bind_event_callback("ui_repaint"_hashid, [this]() {
+        if (m_parent) {
+            m_parent->dispatch_event("ui_repaint"_hashid);
+        }
+    });
+}
 
 Widget::~Widget() {
     if (m_parent) {
@@ -16,6 +22,12 @@ Widget::~Widget() {
 
 void Widget::set_parent(Widget *parent) {
     m_parent = parent;
+    
+    if (parent) {
+        m_window = parent->m_window;
+    } else {
+        m_window = nullptr;
+    }
 }
 
 Widget *Widget::get_widget_at(const Vector2f &pos) {
@@ -34,6 +46,8 @@ void Widget::repaint(UIPainter &painter) {
     // Default is to draw nothing, but resize the texture if needed
     if (m_surface) {
         auto wanted_size = vector_static_cast<int>(bounds.size());
+        logger::debug("Widget::repaint: wanted_size = {}, bounds = {}", wanted_size, (Vector4f)bounds);
+
         if (m_surface->size() != wanted_size) {
             if (wanted_size.x <= 0 || wanted_size.y <= 0) {
                 wanted_size = { 1, 1 };
@@ -150,6 +164,10 @@ void FlowBox::update_layout() {
         // Update the layout for each child
         child->layout.calculate_layout(child->calculated_layout, &calculated_layout);
     
+        if (child->layout.position == LayoutPositioning::Absolute) {
+            continue;
+        }
+
         // Get the size the child is requesting
         auto child_size = child->calculated_layout.outer_size;
 
@@ -163,6 +181,13 @@ void FlowBox::update_layout() {
     // Now we decide how we want to lay out the children
     if (layout.layout_direction == LayoutDirection::Vertical) {
         for (auto *child : m_children) {
+            if (child->layout.position == LayoutPositioning::Absolute) {
+                child->bounds =
+                    {0, 0, child->calculated_layout.inner_size.x, child->calculated_layout.inner_size.y};
+                child->update_layout();
+                continue;
+            }
+
             auto inner_size = child->calculated_layout.inner_size;
 
             float widget_x = x_pos + child->calculated_layout.left_padding;
@@ -183,6 +208,13 @@ void FlowBox::update_layout() {
         }
     } else {
         for (auto *child : m_children) {
+            if (child->layout.position == LayoutPositioning::Absolute) {
+                child->bounds =
+                    {0, 0, child->calculated_layout.inner_size.x, child->calculated_layout.inner_size.y};
+                child->update_layout();
+                continue;
+            }
+
             auto inner_size = child->calculated_layout.inner_size;
 
             float widget_x = x_pos + child->calculated_layout.left_padding;

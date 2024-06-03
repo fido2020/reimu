@@ -1,13 +1,36 @@
 #include <reimu/gui/widget.h>
 
+#include <reimu/gui/window.h>
+
 namespace reimu::gui {
 
-RootContainer::RootContainer(const Vector2f &viewport_size, bool decorate)
+RootContainer::RootContainer(Window *win, const Vector2f &viewport_size, bool decorate)
     : m_viewport_size(viewport_size), m_decorate(decorate) {
+    m_window = win;
 
+    if (m_decorate) {
+        auto *close_button = new Button;
+        close_button->layout.width = Size::from_pixels(18);
+        close_button->layout.height = Size::from_pixels(18);
+        close_button->layout.position = LayoutPositioning::Absolute;
+        add_child(close_button);
+
+        close_button->bind_event_callback("on_click"_hashid, [this]() {
+            if (m_window)
+                m_window->close();
+        });
+
+        m_window_controls.push_back(std::unique_ptr<Widget>(close_button));
+    }
+
+    bind_event_callback("ui_repaint"_hashid, [this]() {
+        m_repaint = true;
+    });
 }
 
 void RootContainer::repaint(UIPainter &painter) {
+    m_repaint = false;
+
     Box::repaint(painter);
 
     if (m_decorate) {
@@ -16,6 +39,10 @@ void RootContainer::repaint(UIPainter &painter) {
         painter.begin(p);
         painter.draw_frame("Reimu", true);
         painter.end();
+
+        for (auto &control : m_window_controls) {
+            control->repaint(painter);
+        }
     }
 }
 
@@ -32,7 +59,7 @@ void RootContainer::update_layout(const Vector2f &viewport_size) {
     calculated_layout.inner_size = m_viewport_size -
         Vector2f { calculated_layout.left_padding + calculated_layout.right_padding,
             calculated_layout.top_padding + calculated_layout.bottom_padding };
-   
+
     if (m_decorate) {
         // TODO: use Style object
         calculated_layout.inner_size -= {6, 6 + 24 + 2};
@@ -43,6 +70,22 @@ void RootContainer::update_layout(const Vector2f &viewport_size) {
     bounds = {0, 0, viewport_size.x, viewport_size.y};
 
     FlowBox::update_layout();
+
+    if (m_decorate) {
+        float xpos = viewport_size.x - 8;
+        float ypos = 6;
+        for (auto &control : m_window_controls) {
+            float new_xpos = xpos - control->calculated_layout.outer_size.x;
+            control->bounds = {new_xpos, ypos,
+                xpos, ypos + control->calculated_layout.inner_size.y};
+
+            logger::debug("Control bounds: {} {} {} {}",
+                control->bounds.x, control->bounds.y,
+                control->bounds.z, control->bounds.w);
+
+            xpos = new_xpos - 2;
+        }
+    }
 }
 
 void RootContainer::signal_layout_changed() {

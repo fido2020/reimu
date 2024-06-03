@@ -36,8 +36,6 @@ void Compositor::draw(graphics::Renderer &renderer, graphics::RenderPass &pass) 
     ubo.view = view_transform;
 
     for (const auto &clip : m_clips) {
-        logger::debug("drawing clip: x: {}, y: {}, w: {}, h: {}", clip.dest.x, clip.dest.y, clip.source.width(), clip.source.height());
-
         Vector4i source = clip.source;
         Vector2i dest = clip.dest;
 

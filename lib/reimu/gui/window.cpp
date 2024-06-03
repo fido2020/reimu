@@ -25,11 +25,13 @@ Window::Window(video::Window *window, graphics::Renderer *renderer)
 
     m_raw_window->bind_event_callback("wm_input"_hashid, [this]() {
         process_input();
+        render();
     });
 
     m_compositor = std::make_unique<Compositor>(renderer);
 
-    m_root = std::make_unique<RootContainer>(vector_static_cast<float>(renderer->get_viewport_size()));
+    m_root = std::make_unique<RootContainer>(this,
+        vector_static_cast<float>(renderer->get_viewport_size()));
     m_root->create_texture_if_needed(m_create_texture_fn);
 }
 
@@ -40,10 +42,14 @@ void Window::render() {
         DefaultUIPainter painter{};
         m_root->repaint(painter);
 
+        m_compositor->clear_clips();
         m_root->add_clips(m_compositor->get_add_clip_fn());
+    } else if(m_root->needs_repaint()) {
+        DefaultUIPainter painter{};
+        m_root->repaint(painter);
     }
 
-    m_renderer->render();
+    m_raw_window->render();
 }
 
 void Window::set_size(const Vector2i &size) {
@@ -65,12 +71,10 @@ void Window::process_input() {
             }
 
             auto *widget = m_root->get_widget_at(m_pointer);
-            if (widget) {
-                if (mouse.is_enter) {
-                    widget->dispatch_event("on_mouse_enter"_hashid);
-                } else if (mouse.is_leave) {
-                    widget->dispatch_event("on_mouse_leave"_hashid);
-                }
+            if (mouse.is_leave) {
+                set_mouse_widget(nullptr);
+            } else if (widget) {
+                set_mouse_widget(widget);
 
                 if (mouse.is_move) {
                     widget->dispatch_event("on_mouse_move"_hashid);
@@ -81,6 +85,8 @@ void Window::process_input() {
                     case video::MouseButton::Left:
                         if (mouse.state == video::MouseButtonState::Pressed) {
                             widget->dispatch_event("on_mouse_down"_hashid);
+
+                            auto bounds = widget->bounds;
                         } else {
                             widget->dispatch_event("on_mouse_up"_hashid);
                         }
@@ -88,6 +94,20 @@ void Window::process_input() {
                 }
             }
         }
+    }
+}
+
+void Window::set_mouse_widget(Widget *widget) {
+    if (m_mouse_widget != widget) {
+        if (m_mouse_widget) {
+            m_mouse_widget->dispatch_event("on_mouse_leave"_hashid);
+        }
+
+        if (widget) {
+            widget->dispatch_event("on_mouse_enter"_hashid);
+        }
+        
+        m_mouse_widget = widget;
     }
 }
 

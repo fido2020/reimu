@@ -59,6 +59,7 @@ protected:
     virtual void remove_child(Widget *child);
 
     Widget *m_parent = nullptr;
+    class Window *m_window = nullptr;
 
     std::unique_ptr<graphics::Surface> m_surface;
 };
@@ -124,21 +125,30 @@ public:
 
 class RootContainer : public FlowBox {
 public:
-    RootContainer(const Vector2f &viewport_size, bool decorate = true);
+    RootContainer(class Window *win, const Vector2f &viewport_size,
+        bool decorate = true);
 
     void repaint(UIPainter &painter) override;
     void update_layout(const Vector2f &viewport_size);
 
     void signal_layout_changed() override;
+
     inline bool needs_layout_update() const {
         return m_recalculate_layout;
     }
 
+    inline bool needs_repaint() const {
+        return m_repaint;
+    }
+
 private:
     Rectf inner_bounds() const override;
+    
+    std::list<std::unique_ptr<Widget>> m_window_controls;
 
     Vector2f m_viewport_size;
     bool m_recalculate_layout = true;
+    bool m_repaint = true;
     bool m_decorate = true;
 };
 

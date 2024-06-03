@@ -32,12 +32,9 @@ enum class LayoutUnit {
     LayoutFactor
 };
 
-enum class ContentJustify {
-    Left,
-    Top,
-    Center,
-    Right,
-    Bottom
+enum class LayoutPositioning {
+    Auto,
+    Absolute
 };
 
 enum class LayoutDirection {
@@ -114,6 +111,8 @@ struct LayoutProperties {
     Size font_size = Size::inherit();
 
     LayoutDirection layout_direction;
+
+    LayoutPositioning position = LayoutPositioning::Auto;
 
     inline void set_padding(const Size &sz) {
         left_padding = sz;
