@@ -10,15 +10,21 @@ pkg_check_modules(egl REQUIRED egl)
 add_library(reimu SHARED
     event.cpp
     lib.cpp
+    unicode.cpp
 )
 
 target_include_directories(reimu PUBLIC
     include
 )
 
-target_link_libraries(reimu PUBLIC
+target_compile_options(freetype PUBLIC
+    -fPIC
+)
+
+target_link_libraries(reimu
     ${wayland_LIBRARIES}
     ${egl_LIBRARIES}
+    freetype
     webgpu
 )
 

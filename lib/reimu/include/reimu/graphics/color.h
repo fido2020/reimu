@@ -27,6 +27,18 @@ union ColorRGBA8 final {
 	inline constexpr Vector4f as_float() const {
 		return { r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f };
 	}
+
+	inline constexpr ColorRGBA8 operator*(const ColorRGBA8 &other) const {
+		// Upcast to uint16_t
+		uint16_t alpha = other.a;
+		uint16_t one_minus = 255 - alpha;
+
+		// Split up red-blue, alpha-green
+		uint32_t rb = (value & 0x00ff00ff) * one_minus + (other.value & 0x00ff00ff) * alpha;
+		uint32_t ag = ((value & 0xff00ff00) >> 8) * one_minus + ((other.value & 0xff00ff00) >> 8) * alpha;
+
+		return ((rb & 0xff00ff00) >> 8) | ((ag & 0xff00ff00));
+	}
 };
 
 union ColorRGBA16 final {

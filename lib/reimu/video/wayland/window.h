@@ -16,6 +16,12 @@ public:
             surface(surface), xdg_surface(xdg_surface), xdg_toplevel(xdg_toplevel), size(size) {}
 
     ~WaylandWindow() {
+        xdg_toplevel_destroy(xdg_toplevel);
+        xdg_surface_destroy(xdg_surface);
+        wl_surface_destroy(surface);
+
+        wl_display_roundtrip(driver.display);
+
         driver.windows.remove(this);
     }
 

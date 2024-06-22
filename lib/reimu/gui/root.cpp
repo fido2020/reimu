@@ -45,7 +45,7 @@ void RootContainer::repaint(UIPainter &painter) {
         graphics::Painter p{ *m_surface };
 
         painter.begin(p);
-        painter.draw_frame("Reimu", true);
+        painter.draw_frame(window_title, true);
         painter.end();
 
         for (auto &control : m_window_controls) {

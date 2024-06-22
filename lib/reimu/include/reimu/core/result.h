@@ -106,5 +106,5 @@ private:
 }
 
 #define OK(...) { __VA_OPT__(std::move(__VA_ARGS__)) }
-#define ERR(x) { std::move(x), {} }
+#define ERR(x) { x, {} }
 #define TRY(x) ({ auto v = (x); if (v.is_err()) return ERR(v.move_err()); v.move_val(); })

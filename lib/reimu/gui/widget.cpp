@@ -301,7 +301,15 @@ void GridBox::update_layout() {
     for (size_t y = 0; y < m_grid.size(); y++) {
         // Get the rows items and calculate its height in pixels
         auto &items = m_grid[y].items;
-        float row_height = m_grid[y].size.as_pixels(bounds.height(), calculated_layout);
+        auto row_size = m_grid[y].size;
+
+        float row_height;
+        if (row_size.unit == LayoutUnit::LayoutFactor) {
+            // Calculate the height of the row based on the available space
+            row_height = row_size.value / combined_y_factor * (bounds.height() - combined_height);
+        } else {
+            row_height = row_size.as_pixels(bounds.height(), calculated_layout);
+        }
 
         float space = bounds.width() - combined_widths[y];
         float factor = combined_x_factors[y];

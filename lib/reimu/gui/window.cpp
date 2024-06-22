@@ -1,5 +1,8 @@
 #include <reimu/gui/window.h>
 
+#include <reimu/video/driver.h>
+#include <reimu/video/video.h>
+
 #include "compositor.h"
 
 namespace reimu::gui {
@@ -9,6 +12,9 @@ Result<Window *, ReimuError> Window::create(const Vector2i &size) {
     auto renderer = TRY(graphics::create_attach_renderer(window));
 
     return OK(new Window{ window, renderer });
+}
+
+Window::~Window() {
 }
 
 Window::Window(video::Window *window, graphics::Renderer *renderer)
@@ -58,6 +64,20 @@ void Window::set_size(const Vector2i &size) {
 
 void Window::set_title(const std::string &title) {
     m_raw_window->set_title(title);
+    m_root->window_title = title;
+}
+
+void Window::run_until_close() {
+    auto event_loop = EventLoop::create().ensure();
+    event_loop->watch_os_handle(video::get_driver()->get_window_client_handle(), [this, &event_loop]() {
+        video::get_driver()->window_client_dispatch();
+
+        if (!is_open()) {
+            event_loop->end();
+        }
+    });
+
+    event_loop->run();\
 }
 
 void Window::process_input() {

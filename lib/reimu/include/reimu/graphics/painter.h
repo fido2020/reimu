@@ -37,6 +37,10 @@ public:
     Painter &draw_rect_outline(const Rectf &rect, const Color &color, int thickness);
     Painter &draw_line(const Vector2f &begin, const Vector2f &end, const Color &color, int thickness);
 
+    Surface &surface() {
+        return m_surface;
+    }
+
 private:
     Surface &m_surface;
 };

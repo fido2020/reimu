@@ -3,6 +3,7 @@
 #include <reimu/core/event.h>
 #include <reimu/gui/widget.h>
 #include <reimu/gui/window.h>
+#include <reimu/gui/dialog.h>
 
 #include <list>
 
@@ -12,6 +13,7 @@ int main() {
     video::init();
 
     auto win = gui::Window::create(Vector2i(640, 480)).ensure();
+    win->set_title("window");
 
     auto *root = &win->root();
     root->layout.layout_direction = gui::LayoutDirection::Horizontal;
@@ -61,6 +63,10 @@ int main() {
 
     win->render();
     event_loop->run();
+
+    delete win;
+
+    gui::message_box("バカ", "あんたバカじゃないの？", gui::MessageBoxButtons::ok_cancel());
 
     return 0;
 }

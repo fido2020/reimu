@@ -141,6 +141,8 @@ public:
         return m_repaint;
     }
 
+    std::string window_title = "れいむ";
+
 private:
     Rectf inner_bounds() const override;
     
@@ -150,6 +152,16 @@ private:
     bool m_recalculate_layout = true;
     bool m_repaint = true;
     bool m_decorate = true;
+};
+
+class Label : public Widget {
+public:
+    void repaint(UIPainter &painter) override;
+
+    void set_text(const std::string &text);
+
+private:
+    std::string m_text;
 };
 
 }
