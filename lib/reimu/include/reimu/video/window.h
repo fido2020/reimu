@@ -9,6 +9,12 @@
 #include <string>
 #include <queue>
 
+#ifdef REIMU_WIN32
+
+#include <windows.h>
+
+#endif
+
 namespace reimu::video {
 
 enum class WindowOptions {
@@ -17,7 +23,8 @@ enum class WindowOptions {
 };
 
 enum class NativeHandleType {
-    Wayland
+    Wayland,
+    Win32
 };
 
 struct WaylandNativeHandle {
@@ -25,10 +32,16 @@ struct WaylandNativeHandle {
     struct wl_display *display;
 };
 
+struct Win32NativeHandle {
+    void *hinstance;
+    void *hwnd;
+};
+
 struct NativeWindowHandle {
     NativeHandleType type;
     union {
         WaylandNativeHandle wayland;
+        Win32NativeHandle win32;
     };
 };
 

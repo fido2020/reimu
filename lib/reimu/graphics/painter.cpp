@@ -65,7 +65,7 @@ Painter &Painter::draw_rect_gradient(const Rectf &rect, const Color &c1, const C
         float blend = y + clipped_rect.x / length;
         uint32_t cols = clipped_rect.width();
         while (cols--) {
-            uint16_t blend_factor = std::clamp<uint16_t>(static_cast<uint16_t>(blend * 255), 0, 255);
+            uint16_t blend_factor = std::min<uint16_t>(std::max<uint16_t>(static_cast<uint16_t>(blend * 255), 0), 255);
             uint16_t one_minus = 255 - blend_factor;
 
             // Split up red-blue, alpha-green

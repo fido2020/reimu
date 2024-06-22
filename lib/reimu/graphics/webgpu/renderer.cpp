@@ -480,6 +480,19 @@ Result<WGPUSurface, ReimuError> WebGPURenderer::create_bind_window_surface(WGPUI
         surface_desc.label = NULL;
 
         return wgpuInstanceCreateSurface(instance, &surface_desc);
+    } case video::NativeHandleType::Win32: {
+        WGPUSurfaceDescriptorFromWindowsHWND win32_desc = {};
+        win32_desc.chain.next = nullptr;
+        win32_desc.chain.sType = WGPUSType_SurfaceDescriptorFromWindowsHWND;
+
+        win32_desc.hinstance = win_handle->win32.hinstance;
+        win32_desc.hwnd = win_handle->win32.hwnd;
+
+        WGPUSurfaceDescriptor surface_desc;
+        surface_desc.nextInChain = &win32_desc.chain;
+        surface_desc.label = NULL;
+
+        return wgpuInstanceCreateSurface(instance, &surface_desc);
     }
     }
 
