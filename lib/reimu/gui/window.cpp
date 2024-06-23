@@ -15,6 +15,7 @@ Result<Window *, ReimuError> Window::create(const Vector2i &size) {
 }
 
 Window::~Window() {
+
 }
 
 Window::Window(video::Window *window, graphics::Renderer *renderer)
@@ -77,7 +78,9 @@ void Window::run_until_close() {
         }
     });
 
-    event_loop->run();\
+    event_loop->run();
+
+    delete event_loop;
 }
 
 void Window::process_input() {

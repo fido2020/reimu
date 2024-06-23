@@ -61,11 +61,13 @@ protected:
     Widget *m_parent = nullptr;
     class Window *m_window = nullptr;
 
-    std::unique_ptr<graphics::Surface> m_surface;
+    std::unique_ptr<graphics::Surface> m_surface = nullptr;
 };
 
 class Box : public Widget {
 public:
+    ~Box();
+
     Widget *get_widget_at(const Vector2f &pos) override;
 
     virtual void repaint(UIPainter &painter) override;

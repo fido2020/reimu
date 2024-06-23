@@ -5,6 +5,8 @@
 
 #include <windows.h>
 
+#define WIN32_MESSAGE_LOOP -1
+
 namespace reimu {
 
 class WindowsEventLoop : public EventLoop {
@@ -33,9 +35,12 @@ public:
 
     void run() override {
         MSG win_msg;
-        while (!m_has_ended && GetMessage(&win_msg, nullptr, 0, 0)) {
-            TranslateMessage(&win_msg);
-            DispatchMessage(&win_msg);
+        while (!m_has_ended && WaitMessage()) {
+            // We have a special value for the win32 message loop
+            auto cb = m_callbacks.find(WIN32_MESSAGE_LOOP);
+            if (cb != m_callbacks.end()) {
+                (*cb->second)();
+            }
         }
     }
 

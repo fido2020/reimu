@@ -53,6 +53,8 @@ int message_box(const std::string &title, const std::string &message, const Mess
     win->render();
     win->run_until_close();
 
+    delete win;
+    
     return return_value;
 }
 

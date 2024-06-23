@@ -145,9 +145,7 @@ void Text::render(Surface &dest, const Rectf &bounds) {
             if (y_offset + y < 0) {
                 continue;
             }
-
-            logger::debug("x_max: {}", x_max);
-
+            
             auto *dst = surface_buffer + y_offset * surface_size.x + x_pos + x_off;
             uint8_t *src = (uint8_t*)slot->bitmap.buffer + y * slot->bitmap.pitch;
 

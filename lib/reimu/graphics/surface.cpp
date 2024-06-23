@@ -11,6 +11,10 @@ Surface::Surface(Texture *tex) {
     make_buffer();
 }
 
+Surface::~Surface() {
+    m_texture = nullptr;
+}
+
 void Surface::resize(const Vector2i &size) {
     m_texture->replace(m_color_format, size);
     m_size = size;

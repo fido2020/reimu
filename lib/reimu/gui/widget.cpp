@@ -84,6 +84,12 @@ void Widget::create_texture_if_needed(CreateTextureFn fn) {
     }
 }
 
+Box::~Box() {
+    for (Widget *child : m_children) {
+        child->set_parent(nullptr);
+    }
+}
+
 Widget *Box::get_widget_at(const Vector2f &pos) {
     for (Widget *child : m_children) {
         if (child->bounds.contains(pos)) {
@@ -132,6 +138,7 @@ void Box::add_child(Widget *child) {
 
 void Box::remove_child(Widget *child) {
     m_children.remove(child);
+    child->set_parent(nullptr);
 }
 
 void Box::add_clips(AddClipFn add_clip) {

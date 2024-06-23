@@ -4,6 +4,8 @@
 #include <reimu/video/driver.h>
 #include <reimu/video/input.h>
 
+#include <windows.h>
+
 class WindowsDriver final : public reimu::video::Driver {
 public:
     reimu::video::Window *window_create(const reimu::Vector2i &size) override;
@@ -13,5 +15,5 @@ public:
     
     void finish() override;
 
-    void *dummy;
+    WNDCLASSEX wc;
 };

@@ -15,10 +15,12 @@ public:
     }
 
     void set_size(const reimu::Vector2i &size) override {
-        
+        SetWindowPos(handle, nullptr, 0, 0, size.x, size.y, SWP_NOMOVE | SWP_NOZORDER);
     }
 
-    void set_title(const std::string &title) override {}
+    void set_title(const std::string &title) override {
+        SetWindowText(handle, title.c_str());
+    }
 
     reimu::Vector2i get_size() const override {
         return size;
@@ -43,7 +45,10 @@ public:
     }
 
     void begin_move() override {
-        reimu::logger::debug("begin move");
+        // Trick the win32 window into thinking the user is dragging the title bar
+        // SC_MOVE - move the window
+        // HTCAPTION - act like we are dragging the titlebar
+        DefWindowProc(handle, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0);
     }
 
     reimu::Result<reimu::video::NativeWindowHandle *, reimu::ReimuError> get_native_handle()

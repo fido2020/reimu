@@ -11,6 +11,7 @@ namespace reimu::graphics {
 class Surface {
 public:
     Surface(Texture *tex);
+    ~Surface();
 
     /**
      * @brief Resize the surface including any underlying texture

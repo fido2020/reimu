@@ -172,6 +172,10 @@ WebGPURenderer::~WebGPURenderer() {
         wgpuSwapChainRelease(m_swap_chain);
     }
 
+    for (auto shader : m_shaders) {
+        wgpuShaderModuleRelease(shader.second);
+    }
+
     if (m_device) {
         wgpuDeviceRelease(m_device);
     }
