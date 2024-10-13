@@ -83,6 +83,10 @@ void Window::run_until_close() {
     delete event_loop;
 }
 
+void Window::set_is_decorated(bool is_decorated) {
+    m_root->set_is_decorated(is_decorated);
+}
+
 void Window::process_input() {
     video::InputEvent event;
     while (m_raw_window->get_event(event)) {

@@ -143,10 +143,22 @@ public:
         return m_repaint;
     }
 
+    inline void set_is_decorated(bool decorate) {
+        if (m_decorate == decorate) {
+            return;
+        }
+
+        m_decorate = decorate;
+        m_recalculate_layout = true;
+        
+        create_window_controls();
+    }
+
     std::string window_title = "れいむ";
 
 private:
     Rectf inner_bounds() const override;
+    void create_window_controls();
     
     std::list<std::unique_ptr<Widget>> m_window_controls;
 
@@ -161,6 +173,18 @@ public:
     void repaint(UIPainter &painter) override;
 
     void set_text(const std::string &text);
+
+private:
+    std::string m_text;
+};
+
+class TextBox : public Widget {
+public:
+    TextBox();
+    void repaint(UIPainter &painter) override;
+
+    void set_text(std::string text);
+    std::string_view get_text() const;
 
 private:
     std::string m_text;

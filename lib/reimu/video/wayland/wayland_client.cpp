@@ -47,6 +47,19 @@ static void pointer_button(void *data, struct wl_pointer *pointer, uint32_t seri
         uint32_t time, uint32_t button, uint32_t state);
 static void pointer_frame(void *data, struct wl_pointer *pointer);
 
+static void output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
+        int32_t physical_width, int32_t physical_height, int32_t subpixel, const char *make,
+        const char *model, int32_t transform);
+static void output_mode(void *data, struct wl_output *wl_output, uint32_t flags, int32_t width,
+        int32_t height, int32_t refresh);
+static void output_done(void *data, struct wl_output *wl_output);
+
+static void output_scale(void *data, struct wl_output *wl_output, int32_t factor);
+
+static void output_name(void *data, struct wl_output *wl_output, const char *name);
+
+static void output_description(void *data, struct wl_output *wl_output, const char *description);
+
 static const xdg_wm_base_listener wm_base_listener = {
     .ping = xdg_ping,
 };
@@ -82,6 +95,15 @@ static const wl_pointer_listener pointer_listener = {
     .axis_source = nullptr,
     .axis_stop = nullptr,
     .axis_discrete = nullptr
+};
+
+static const wl_output_listener output_listener = {
+    .geometry = output_geometry,
+    .mode = output_mode,
+    .done = output_done,
+    .scale = output_scale,
+    .name = output_name,
+    .description = output_description
 };
 
 reimu::video::Window *WaylandDriver::window_create(const reimu::Vector2i &size) {  
@@ -139,6 +161,10 @@ void WaylandDriver::window_client_dispatch() {
     }
 
     wl_display_flush(display);
+}
+
+reimu::Vector2u WaylandDriver::get_display_size() {
+    return display_sizes.front();
 }
 
 void WaylandDriver::finish() {
@@ -216,6 +242,8 @@ reimu::video::Driver *wayland_init() {
         d->cursor_buffer = cursor_buffer;
         d->cursor_surface = cursor_surface;
     }
+
+    wl_display_roundtrip(display);
 
     return d;
 }
@@ -377,6 +405,39 @@ static void pointer_frame(void *data, struct wl_pointer *pointer) {
     d->mouse_event = {};
 }
 
+static reimu::Vector2u output_size;
+
+static void output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
+        int32_t physical_width, int32_t physical_height, int32_t subpixel, const char *make,
+        const char *model, int32_t transform) {
+    
+}
+
+static void output_mode(void *data, struct wl_output *wl_output, uint32_t flags, int32_t width,
+        int32_t height, int32_t refresh) {
+    reimu::logger::debug("output_mode: {}x{}@{}", width, height, refresh);
+
+    output_size = {(uint32_t)width, (uint32_t)height};
+}
+
+static void output_done(void *data, struct wl_output *wl_output) {
+    auto *d = (WaylandDriver *)data;
+
+    d->display_sizes.push_back(output_size);
+}
+
+static void output_scale(void *data, struct wl_output *wl_output, int32_t factor) {
+    
+}
+
+static void output_name(void *data, struct wl_output *wl_output, const char *name) {
+    
+}
+
+static void output_description(void *data, struct wl_output *wl_output, const char *description) {
+    
+}
+
 static void registry_handler(void *data, struct wl_registry *registry, uint32_t name,
         const char *interface, uint32_t version) {
     auto *d = (WaylandDriver *)data;
@@ -395,6 +456,9 @@ static void registry_handler(void *data, struct wl_registry *registry, uint32_t 
         wl_seat_add_listener(d->seat, &seat_listener, d);
     } else if (strcmp(interface, wl_shm_interface.name) == 0) {
         d->shm = (wl_shm *)wl_registry_bind(registry, name, &wl_shm_interface, version);
+    } else if (strcmp(interface, wl_output_interface.name) == 0) {
+        d->output = (wl_output *)wl_registry_bind(registry, name, &wl_output_interface, version);
+        wl_output_add_listener(d->output, &output_listener, d);
     }
 }
 

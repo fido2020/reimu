@@ -8,20 +8,7 @@ RootContainer::RootContainer(Window *win, const Vector2f &viewport_size, bool de
     : m_viewport_size(viewport_size), m_decorate(decorate) {
     m_window = win;
 
-    if (m_decorate) {
-        auto *close_button = new Button;
-        close_button->layout.width = Size::from_pixels(18);
-        close_button->layout.height = Size::from_pixels(18);
-        close_button->layout.position = LayoutPositioning::Absolute;
-        add_child(close_button);
-
-        close_button->bind_event_callback("on_click"_hashid, [this]() {
-            if (m_window)
-                m_window->close();
-        });
-
-        m_window_controls.push_back(std::unique_ptr<Widget>(close_button));
-    }
+    create_window_controls();
 
     bind_event_callback("ui_repaint"_hashid, [this]() {
         m_repaint = true;
@@ -56,6 +43,7 @@ void RootContainer::repaint(UIPainter &painter) {
 
 void RootContainer::update_layout(const Vector2f &viewport_size) {
     m_recalculate_layout = false;
+    m_repaint = true;
 
     calculated_layout.font_size = 16;
     calculated_layout.root_font_size = 16;
@@ -104,6 +92,29 @@ Rectf RootContainer::inner_bounds() const {
     }
     
     return {0, 0, m_viewport_size.x, m_viewport_size.y};
+}
+
+void RootContainer::create_window_controls() {
+    for (auto &c : m_window_controls) {
+        remove_child(c.get());
+    }
+
+    m_window_controls.clear();
+
+    if (m_decorate) {
+        auto *close_button = new Button;
+        close_button->layout.width = Size::from_pixels(18);
+        close_button->layout.height = Size::from_pixels(18);
+        close_button->layout.position = LayoutPositioning::Absolute;
+        add_child(close_button);
+
+        close_button->bind_event_callback("on_click"_hashid, [this]() {
+            if (m_window)
+                m_window->close();
+        });
+
+        m_window_controls.push_back(std::unique_ptr<Widget>(close_button));
+    }
 }
 
 }

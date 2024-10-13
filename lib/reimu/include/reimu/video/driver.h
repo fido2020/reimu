@@ -31,6 +31,8 @@ public:
     virtual void window_client_dispatch() = 0;
 
     virtual void finish() = 0;
+
+    virtual Vector2u get_display_size() = 0;
 };
 
 }

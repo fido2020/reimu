@@ -17,6 +17,8 @@ public:
     
     int get_window_client_handle();
     void window_client_dispatch();
+
+    reimu::Vector2u get_display_size() override;
     
     void finish() override;
 
@@ -32,6 +34,8 @@ public:
     wl_seat *seat = nullptr;
     wl_pointer *pointer = nullptr;
     wl_keyboard *keyboard = nullptr;
+
+    wl_output *output = nullptr;
 
     wl_shm *shm = nullptr;
 
@@ -49,4 +53,6 @@ public:
     class WaylandWindow *mouse_window = nullptr;
 
     std::list<class WaylandWindow *> windows; 
+
+    std::list<reimu::Vector2u> display_sizes;
 };

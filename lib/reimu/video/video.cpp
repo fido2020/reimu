@@ -33,4 +33,8 @@ reimu::video::Driver *get_driver() {
     return driver;
 }
 
+Vector2u get_display_size() {
+    return get_driver()->get_display_size();
+}
+
 }
