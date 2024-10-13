@@ -56,6 +56,8 @@ public:
      */
     void run_until_close();
 
+    void set_is_decorated(bool is_decorated);
+
 private:
     Window(video::Window *window, graphics::Renderer *renderer);
 

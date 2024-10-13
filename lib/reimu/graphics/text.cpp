@@ -68,6 +68,10 @@ void Text::render(Surface &dest, const Rectf &bounds) {
         std::min((int)bounds.w, dest.size().y), 
     };
 
+    if (final_bounds.z <= bounds.x || final_bounds.w <= bounds.y) {
+        return;
+    }
+
     std::unique_lock fontLock(m_font->m_lock);
     FT_Face face = reinterpret_cast<FT_Face>(m_font->get_handle());
 
