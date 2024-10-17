@@ -1,0 +1,16 @@
+#!/bin/bash
+
+SCRIPT_DIR=$(dirname $(readlink -f $0))
+
+TRIPLE=x86_64-w64-mingw32
+
+mingw_prefix=/usr/$TRIPLE
+
+PATH=${mingw_prefix}/bin:$PATH cmake \
+    -DCMAKE_INSTALL_PREFIX:PATH=${mingw_prefix} \
+    -DCMAKE_INSTALL_LIBDIR:PATH=lib \
+    -DCMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES:PATH=${mingw_prefix}/include \
+    -DCMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES:PATH=${mingw_prefix}/include \
+    -DBUILD_SHARED_LIBS:BOOL=ON \
+    -DCMAKE_TOOLCHAIN_FILE=$SCRIPT_DIR/$TRIPLE.cmake \
+    "$@"

@@ -6,6 +6,7 @@ target_sources(reimu PRIVATE
     layout.cpp
     root.cpp
     style.cpp
+    terminal.cpp
     widget.cpp
     window.cpp
 )

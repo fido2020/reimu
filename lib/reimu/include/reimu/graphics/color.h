@@ -39,6 +39,30 @@ union ColorRGBA8 final {
 
 		return ((rb & 0xff00ff00) >> 8) | ((ag & 0xff00ff00));
 	}
+
+	inline static constexpr ColorRGBA8 white() {
+		return { 255, 255, 255, 255 };
+	}
+
+	inline static constexpr ColorRGBA8 black() {
+		return { 0, 0, 0, 255 };
+	}
+
+	inline static constexpr ColorRGBA8 red() {
+		return { 255, 0, 0, 255 };
+	}
+
+	inline static constexpr ColorRGBA8 green() {
+		return { 0, 255, 0, 255 };
+	}
+
+	inline static constexpr ColorRGBA8 blue() {
+		return { 0, 0, 255, 255 };
+	}
+
+	inline static constexpr ColorRGBA8 transparent() {
+		return { 0, 0, 0, 0 };
+	}
 };
 
 union ColorRGBA16 final {

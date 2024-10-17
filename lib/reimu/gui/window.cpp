@@ -87,8 +87,28 @@ void Window::set_is_decorated(bool is_decorated) {
     m_root->set_is_decorated(is_decorated);
 }
 
+Widget *Window::get_focused_widget() {
+    return m_focused_widget;
+}
+
+void Window::set_focused_widget(Widget *widget) {
+    if (widget == m_focused_widget) {
+        return;
+    }
+
+    if (m_focused_widget) {
+        m_focused_widget->dispatch_event("on_focus_lost"_hashid);
+    }
+
+    m_focused_widget = widget;
+
+    if (m_focused_widget) {
+        m_focused_widget->dispatch_event("on_focus_gained"_hashid);
+    }
+}
+
 void Window::process_input() {
-    video::InputEvent event;
+    auto &event = m_last_input_event;
     while (m_raw_window->get_event(event)) {
         if (event.type == event.Mouse) {
             auto mouse = event.mouse;
@@ -118,6 +138,21 @@ void Window::process_input() {
                             widget->dispatch_event("on_mouse_up"_hashid);
                         }
                     }
+                }
+            }
+
+            // Regardless if the widget is null or not,
+            // we still want to set the focused widget
+            if (mouse.is_button && mouse.button == video::MouseButton::Left
+                    && mouse.state == video::MouseButtonState::Pressed) {
+                set_focused_widget(widget);
+            }
+        } else if (event.type == event.Keyboard) {
+            auto key = event.key;
+            if (key.is_down) {
+                auto *widget = get_focused_widget();
+                if (widget) {
+                    widget->dispatch_event("on_key_down"_hashid);
                 }
             }
         }

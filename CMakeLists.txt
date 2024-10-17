@@ -16,6 +16,7 @@ add_subdirectory(thirdparty/freetype)
 
 add_subdirectory(lib/reimu)
 add_subdirectory(guitest)
+add_subdirectory(terminal)
 
 if (UNIX)
     add_subdirectory(servers/wm)

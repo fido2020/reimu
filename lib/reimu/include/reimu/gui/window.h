@@ -3,6 +3,7 @@
 #include <reimu/core/error.h>
 #include <reimu/gui/widget.h>
 #include <reimu/video/window.h>
+#include <reimu/video/input.h>
 
 #include <memory>
 
@@ -58,10 +59,18 @@ public:
 
     void set_is_decorated(bool is_decorated);
 
+    Widget *get_focused_widget();
+    void set_focused_widget(Widget *widget);
+
+    video::InputEvent get_last_input_event() const {
+        return m_last_input_event;
+    }
+
 private:
     Window(video::Window *window, graphics::Renderer *renderer);
 
     void process_input();
+
     void set_mouse_widget(Widget *widget);
 
     bool m_is_open = true;
@@ -69,6 +78,7 @@ private:
     CreateTextureFn m_create_texture_fn;
 
     Widget *m_mouse_widget = nullptr;
+    Widget *m_focused_widget = nullptr;
 
     std::unique_ptr<RootContainer> m_root;
     std::unique_ptr<video::Window> m_raw_window;
@@ -77,6 +87,8 @@ private:
     std::unique_ptr<Compositor> m_compositor;
 
     Vector2f m_pointer = {0, 0};
+
+    video::InputEvent m_last_input_event;
 };
 
 }

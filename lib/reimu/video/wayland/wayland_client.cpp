@@ -4,12 +4,15 @@
 #include <reimu/video/driver.h>
 
 #include <linux/input-event-codes.h>
+#include <sys/mman.h>
 
 #include <wayland-client.h>
 #include <wayland-cursor.h>
 
 #include <assert.h>
 #include <string.h>
+
+#include <xkbcommon/xkbcommon.h>
 
 #include "../egl/egl.h"
 
@@ -46,6 +49,20 @@ static void pointer_move(void *data, struct wl_pointer *pointer, uint32_t time,
 static void pointer_button(void *data, struct wl_pointer *pointer, uint32_t serial,
         uint32_t time, uint32_t button, uint32_t state);
 static void pointer_frame(void *data, struct wl_pointer *pointer);
+
+static void keyboard_keymap(void *data, struct wl_keyboard *keyboard, uint32_t format,
+        int32_t fd, uint32_t size);
+static void keyboard_enter(void *data, struct wl_keyboard *keyboard, uint32_t serial,
+        struct wl_surface *surface, struct wl_array *keys);
+static void keyboard_leave(void *data, struct wl_keyboard *keyboard, uint32_t serial,
+        struct wl_surface *surface);
+static void keyboard_key(void *data, struct wl_keyboard *keyboard, uint32_t serial,
+        uint32_t time, uint32_t key, uint32_t state);
+static void keyboard_modifiers(void *data, struct wl_keyboard *keyboard, uint32_t serial,
+        uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked,
+        uint32_t group);
+static void keyboard_repeat_info(void *data, struct wl_keyboard *keyboard, int32_t rate,
+        int32_t delay);
 
 static void output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
         int32_t physical_width, int32_t physical_height, int32_t subpixel, const char *make,
@@ -95,6 +112,15 @@ static const wl_pointer_listener pointer_listener = {
     .axis_source = nullptr,
     .axis_stop = nullptr,
     .axis_discrete = nullptr
+};
+
+static const wl_keyboard_listener keyboard_listener = {
+    .keymap = keyboard_keymap,
+    .enter = keyboard_enter,
+    .leave = keyboard_leave,
+    .key = keyboard_key,
+    .modifiers = keyboard_modifiers,
+    .repeat_info = keyboard_repeat_info
 };
 
 static const wl_output_listener output_listener = {
@@ -243,6 +269,9 @@ reimu::video::Driver *wayland_init() {
         d->cursor_surface = cursor_surface;
     }
 
+    d->xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+    assert(d->xkb_context);
+
     wl_display_roundtrip(display);
 
     return d;
@@ -304,6 +333,8 @@ static void wl_seat_capabilities(void *data, struct wl_seat *seat, uint32_t capa
 
     if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD) {
         d->keyboard = wl_seat_get_keyboard(seat);
+
+        wl_keyboard_add_listener(d->keyboard, &keyboard_listener, d);
     } else if (d->keyboard) {
         wl_keyboard_release(d->keyboard);
 
@@ -403,6 +434,144 @@ static void pointer_frame(void *data, struct wl_pointer *pointer) {
     }
 
     d->mouse_event = {};
+}
+
+static void keyboard_keymap(void *data, struct wl_keyboard *keyboard, uint32_t format,
+        int32_t fd, uint32_t size) {
+    auto *d = (WaylandDriver *)data;
+
+    assert(format == WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1);
+    struct my_state *state = (struct my_state *)data;
+
+    char *map_shm = (char *)mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    assert(map_shm != MAP_FAILED);
+
+    struct xkb_keymap *keymap = xkb_keymap_new_from_string( d->xkb_context, map_shm,
+        XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
+
+    d->xkb_state = xkb_state_new(keymap);
+
+    munmap(map_shm, size);
+    close(fd);
+}
+
+static void keyboard_enter(void *data, struct wl_keyboard *keyboard, uint32_t serial,
+        struct wl_surface *surface, struct wl_array *keys) {
+    auto *d = (WaylandDriver *)data;
+
+    auto *win = (WaylandWindow *)wl_surface_get_user_data(surface);
+    d->keyboard_window = win;
+}
+
+static void keyboard_leave(void *data, struct wl_keyboard *keyboard, uint32_t serial,
+        struct wl_surface *surface) {
+    auto *d = (WaylandDriver *)data;
+
+    d->keyboard_window = nullptr;
+}
+
+static uint32_t xkb_keysym_to_reimu_keycode(xkb_keysym_t key) {
+    switch (key) {
+        case XKB_KEY_BackSpace:
+            return reimu::video::Key::Backspace;
+        case XKB_KEY_Return:
+            return reimu::video::Key::Return;
+        case XKB_KEY_Tab:
+            return reimu::video::Key::Tab;
+        case XKB_KEY_Escape:
+            return reimu::video::Key::Escape;
+        case XKB_KEY_F1:
+            return reimu::video::Key::F1;
+        case XKB_KEY_F2:
+            return reimu::video::Key::F2;
+        case XKB_KEY_F3:
+            return reimu::video::Key::F3;
+        case XKB_KEY_F4:
+            return reimu::video::Key::F4;
+        case XKB_KEY_F5:
+            return reimu::video::Key::F5;
+        case XKB_KEY_F6:
+            return reimu::video::Key::F6;
+        case XKB_KEY_F7:
+            return reimu::video::Key::F7;
+        case XKB_KEY_F8:
+            return reimu::video::Key::F8;
+        case XKB_KEY_F9:
+            return reimu::video::Key::F9;
+        case XKB_KEY_F10:
+            return reimu::video::Key::F10;
+        case XKB_KEY_F11:
+            return reimu::video::Key::F11;
+        case XKB_KEY_F12:
+            return reimu::video::Key::F12;
+        case XKB_KEY_Print:
+            return reimu::video::Key::PrintScreen;
+        case XKB_KEY_Scroll_Lock:
+            return reimu::video::Key::ScrollLock;
+        case XKB_KEY_Pause:
+            return reimu::video::Key::Pause;
+        case XKB_KEY_Insert:
+            return reimu::video::Key::Insert;
+        case XKB_KEY_Home:
+            return reimu::video::Key::Home;
+        case XKB_KEY_Page_Up:
+            return reimu::video::Key::PageUp;
+        case XKB_KEY_Delete:
+            return reimu::video::Key::Delete;
+        case XKB_KEY_End:
+            return reimu::video::Key::End;
+        case XKB_KEY_Page_Down:
+            return reimu::video::Key::PageDown;
+        case XKB_KEY_Right:
+            return reimu::video::Key::Right;
+        case XKB_KEY_Left:
+            return reimu::video::Key::Left;
+        case XKB_KEY_Down:
+            return reimu::video::Key::Down;
+        case XKB_KEY_Up:
+            return reimu::video::Key::Up;
+        case XKB_KEY_Num_Lock:
+            return reimu::video::Key::NumLock;
+        default:
+            if (key < 0x100)
+                return key;
+            return 0;
+    };
+}
+
+static void keyboard_key(void *data, struct wl_keyboard *keyboard, uint32_t serial,
+        uint32_t time, uint32_t key, uint32_t state) {
+    auto *d = (WaylandDriver *)data;
+
+    // Get the key code and build an input event
+    auto *win = d->keyboard_window;
+    if (win) {
+        // To turn an evdev code into an xkb code, we need to add 8???
+        auto xkb_key = xkb_state_key_get_one_sym(d->xkb_state, key + 8);
+
+        uint32_t key = xkb_keysym_to_reimu_keycode(xkb_key);
+
+        win->queue_input_event({
+            .type = reimu::video::InputEvent::Keyboard,
+            .key = {
+                .is_down = state == WL_KEYBOARD_KEY_STATE_PRESSED,
+                .key = (int)key,
+            }
+        });
+    }
+}
+
+static void keyboard_modifiers(void *data, struct wl_keyboard *keyboard, uint32_t serial,
+        uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked,
+        uint32_t group) {
+    auto *d = (WaylandDriver *)data;
+
+    xkb_state_update_mask(d->xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+}
+
+static void keyboard_repeat_info(void *data, struct wl_keyboard *keyboard, int32_t rate,
+        int32_t delay) {
+    auto *d = (WaylandDriver *)data;
 }
 
 static reimu::Vector2u output_size;

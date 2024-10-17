@@ -27,8 +27,11 @@ if (WAYLAND)
     pkg_check_modules(wayland REQUIRED wayland-server wayland-client wayland-egl wayland-cursor)
     pkg_check_modules(egl REQUIRED egl)
 
+    pkg_check_modules(xkb REQUIRED xkbcommon)
+
     target_link_libraries(reimu
         ${wayland_LIBRARIES}
+        ${xkb_LIBRARIES}
         ${egl_LIBRARIES}
     )
 

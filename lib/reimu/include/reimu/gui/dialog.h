@@ -26,6 +26,12 @@ struct MessageBoxButtons {
             { "No", 0 }
         }};
     }
+
+    constexpr static inline MessageBoxButtons ok() {
+        return {{
+            { "OK", 0 },
+        }};
+    }
 };
 
 int message_box(const std::string &title, const std::string &message, const MessageBoxButtons &buttons);

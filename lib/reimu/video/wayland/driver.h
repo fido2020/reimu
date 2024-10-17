@@ -44,6 +44,9 @@ public:
     wl_buffer *cursor_buffer = nullptr;
     wl_surface *cursor_surface = nullptr;
 
+    struct xkb_context *xkb_context = nullptr;
+    struct xkb_state *xkb_state = nullptr;
+
     // 'serial' value of the last mouse button event, may be used for dragging the window
     uint32_t mouse_serial;
 
@@ -51,6 +54,8 @@ public:
     // keep track of event data and which window is active
     reimu::video::MouseEvent mouse_event;
     class WaylandWindow *mouse_window = nullptr;
+
+    class WaylandWindow *keyboard_window = nullptr;
 
     std::list<class WaylandWindow *> windows; 
 
