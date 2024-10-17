@@ -8,6 +8,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 #include <spawn.h>
 #include <pty.h>
 
@@ -21,8 +22,6 @@ public:
         m_event_loop = std::unique_ptr<EventLoop>{
             EventLoop::create().ensure()
         };
-
-        m_test_file = open("test.txt", O_CREAT | O_WRONLY, 0644);
 
         int slave_fd;
         if (openpty(&m_pty_fd, &slave_fd, nullptr, nullptr, nullptr) < 0) {
@@ -56,6 +55,9 @@ public:
         terminal_widget->bind_event_callback("on_key_down"_hashid, [this]() {
             auto ev = m_window->get_last_input_event();
 
+            logger::debug("Key down: {} is_ctrl: {} is_shift: {} is_alt: {}",
+                ev.key.key, ev.key.is_ctrl, ev.key.is_shift, ev.key.is_alt);
+
             switch (ev.key.key) {
             case video::Key::Return:
                 write(m_pty_fd, "\n", 1);
@@ -74,6 +76,26 @@ public:
                 break;
             case video::Key::Down:
                 write(m_pty_fd, "\e[B", 3);
+                break;
+            case 'c':
+            case 'C':
+                if (ev.key.is_ctrl) {
+                    // Get the foreground process group
+                    pid_t pgid = tcgetpgrp(m_pty_fd);
+                    if (pgid < 0) {
+                        logger::warn("Failed to get foreground process group: {}", strerror(errno));
+                        break;
+                    }
+
+                    // Send SIGINT to the process group
+                    if (killpg(pgid, SIGINT) < 0) {
+                        logger::warn("Failed to send SIGINT to process group: {}", strerror(errno));
+                    }
+                } else {
+                    write(m_pty_fd, &ev.key.key, 1);
+                }
+                break;
+            case 0:
                 break;
             default:
                 write(m_pty_fd, &ev.key.key, 1);
@@ -146,7 +168,6 @@ public:
 
         char *end = buf + n;
         for (auto it = buf; it < end; it++) {
-            write(m_test_file, it, 1);
             if (m_escape_state != EscapeState::None) {
                 //logger::debug("seq: {}", *it);
 
@@ -495,8 +516,6 @@ private:
     EscapeState m_escape_state = EscapeState::None;
 
     int m_pty_fd;
-
-    int m_test_file;
 
     pid_t m_child_pid;
 
