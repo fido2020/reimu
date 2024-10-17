@@ -55,6 +55,7 @@ public:
     reimu::video::MouseEvent mouse_event;
     class WaylandWindow *mouse_window = nullptr;
 
+    reimu::video::KeyboardEvent keyboard_event;
     class WaylandWindow *keyboard_window = nullptr;
 
     std::list<class WaylandWindow *> windows; 

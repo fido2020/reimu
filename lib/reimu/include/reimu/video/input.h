@@ -67,6 +67,11 @@ struct MouseEvent {
 struct KeyboardEvent {
     bool is_down = true;
 
+    bool is_ctrl = false;
+    bool is_shift = false;
+    bool is_alt = false;
+    bool is_win = false;
+
     int key;
 };
 

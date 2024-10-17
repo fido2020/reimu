@@ -545,18 +545,17 @@ static void keyboard_key(void *data, struct wl_keyboard *keyboard, uint32_t seri
 
     // Get the key code and build an input event
     auto *win = d->keyboard_window;
-    if (win) {
+    if (win && state == WL_KEYBOARD_KEY_STATE_PRESSED) {
         // To turn an evdev code into an xkb code, we need to add 8???
         auto xkb_key = xkb_state_key_get_one_sym(d->xkb_state, key + 8);
 
         uint32_t key = xkb_keysym_to_reimu_keycode(xkb_key);
 
+        d->keyboard_event.key = key;
+
         win->queue_input_event({
             .type = reimu::video::InputEvent::Keyboard,
-            .key = {
-                .is_down = state == WL_KEYBOARD_KEY_STATE_PRESSED,
-                .key = (int)key,
-            }
+            .key = d->keyboard_event
         });
     }
 }
@@ -567,6 +566,14 @@ static void keyboard_modifiers(void *data, struct wl_keyboard *keyboard, uint32_
     auto *d = (WaylandDriver *)data;
 
     xkb_state_update_mask(d->xkb_state, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+
+    // Get which modifiers are pressed from XKB and build an input event
+    auto &ev = d->keyboard_event;
+
+    ev.is_ctrl = xkb_state_mod_name_is_active(d->xkb_state, XKB_MOD_NAME_CTRL, XKB_STATE_MODS_DEPRESSED) == 1;
+    ev.is_shift = xkb_state_mod_name_is_active(d->xkb_state, XKB_MOD_NAME_SHIFT, XKB_STATE_MODS_DEPRESSED) == 1;
+    ev.is_alt = xkb_state_mod_name_is_active(d->xkb_state, XKB_MOD_NAME_ALT, XKB_STATE_MODS_DEPRESSED) == 1;
+    ev.is_win = xkb_state_mod_name_is_active(d->xkb_state, XKB_MOD_NAME_LOGO, XKB_STATE_MODS_DEPRESSED) == 1; 
 }
 
 static void keyboard_repeat_info(void *data, struct wl_keyboard *keyboard, int32_t rate,
