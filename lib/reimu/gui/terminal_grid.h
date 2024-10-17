@@ -87,6 +87,19 @@ public:
         m_cur_y = y;
     }
 
+    void set_cursor_visible(bool visible) {
+        m_cursor_is_visible = visible;
+    }
+
+    void backspace() {
+        if (m_cur_x > 0) {
+            m_cur_x--;
+        } else if (m_cur_y > 0) {
+            m_cur_y--;
+            m_cur_x = m_row_size - 1;
+        }
+    }
+
     Vector2i get_cursor() const {
         return {m_cur_x, m_cur_y};
     }
@@ -148,7 +161,9 @@ public:
         }
 
         // Draw cursor
-        draw_cell_fn(' ', m_cur_y, m_cur_x, 0x000000, 0xFFFFFF);
+        if (m_cursor_is_visible) {
+            draw_cell_fn(' ', m_cur_y, m_cur_x, 0x000000, 0xFFFFFF);
+        }
     }
 
     void carriage_return() {
@@ -187,6 +202,8 @@ private:
     int m_num_visible_rows;
     // Size of each row in cells (we do not allow rows to go off the screen)
     int m_row_size;
+
+    bool m_cursor_is_visible = true;
 };
 
 }

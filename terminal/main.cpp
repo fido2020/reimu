@@ -55,9 +55,6 @@ public:
         terminal_widget->bind_event_callback("on_key_down"_hashid, [this]() {
             auto ev = m_window->get_last_input_event();
 
-            logger::debug("Key down: {} is_ctrl: {} is_shift: {} is_alt: {}",
-                ev.key.key, ev.key.is_ctrl, ev.key.is_shift, ev.key.is_alt);
-
             switch (ev.key.key) {
             case video::Key::Return:
                 write(m_pty_fd, "\n", 1);
@@ -198,15 +195,16 @@ public:
                     break;
                 } 
                 case '\b':
-                    m_terminal_widget->move_cursor(-1, 0);
+                    m_terminal_widget->backspace();
                     break;
                 case '\e':
                     m_escape_state = EscapeState::Escape;
                     m_escape_buf.clear();
                     break;
-                case ' ':
+                case reimu::video::Key::Tab:
+                    m_terminal_widget->put_char('\t');
+                    break;
                 default:
-                    m_terminal_widget->put_char(*it);
                     break;
                 }
             }
@@ -380,6 +378,17 @@ public:
             case SetGraphicsRendition:
                 parse_sgr();
                 break;
+            case Enable:
+                // TODO: this is really hacky
+                if (m_escape_buf.compare("?25")) {
+                    m_terminal_widget->set_cursor_visible(true);
+                }
+                break;
+            case Disable:
+                if (m_escape_buf.compare("?25")) {
+                    m_terminal_widget->set_cursor_visible(false);
+                }
+                break;
             default:
                 if (is_csi_final_byte(c)) {
                     logger::warn("Unsupported escape sequence \\e[{}{}", m_escape_buf, c);
@@ -510,6 +519,8 @@ private:
         ScrollUp = 'S',
         ScrollDown = 'T',
         SetGraphicsRendition = 'm',
+        Enable = 'h',
+        Disable = 'l',
     };
 
     std::string m_escape_buf;

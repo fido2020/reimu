@@ -46,6 +46,20 @@ void TerminalWidget::set_cursor(const Vector2i &pos) {
     m_data->grid.set_cursor(pos.x, pos.y);
 }
 
+void TerminalWidget::set_cursor_visible(bool visible) {
+    m_data->grid.set_cursor_visible(visible);
+}
+
+void TerminalWidget::backspace() {
+    m_data->grid.backspace();
+
+    if (!m_has_requested_repaint) {
+        m_has_requested_repaint = true;
+        
+        dispatch_event("ui_repaint"_hashid);
+    }
+}
+
 Vector2i TerminalWidget::get_cursor() const {
     return m_data->grid.get_cursor();
 }

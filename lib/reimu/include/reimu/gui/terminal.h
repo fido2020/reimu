@@ -27,6 +27,9 @@ public:
 
     void move_cursor(int x, int y);
     void set_cursor(const Vector2i &pos);
+    void set_cursor_visible(bool visible);
+
+    void backspace();
 
     Vector2i get_cursor() const;
     Vector2i get_size() const;
