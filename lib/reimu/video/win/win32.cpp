@@ -8,6 +8,83 @@
 
 reimu::video::Driver *win32_init();
 
+reimu::video::Key win32_to_reimu_key_code(WPARAM key) {
+    switch (key)
+    {
+    case VK_TAB:
+        return reimu::video::Key::Tab;
+    case VK_RETURN:
+        return reimu::video::Key::Return;
+    case VK_SHIFT:
+        return reimu::video::Key::Shift;
+    case VK_CONTROL:
+        return reimu::video::Key::Ctrl;
+    case VK_MENU:
+        return reimu::video::Key::Alt;
+    case VK_PAUSE:
+        return reimu::video::Key::Pause;
+    case VK_ESCAPE:
+        return reimu::video::Key::Escape;
+    case VK_SPACE:
+        return reimu::video::Key::Space;
+    case VK_PRIOR:
+        return reimu::video::Key::PageUp;
+    case VK_NEXT:
+        return reimu::video::Key::PageDown;
+    case VK_END:
+        return reimu::video::Key::End;
+    case VK_HOME:
+        return reimu::video::Key::Home;
+    case VK_LEFT:
+        return reimu::video::Key::Left;
+    case VK_UP:
+        return reimu::video::Key::Up;
+    case VK_RIGHT:
+        return reimu::video::Key::Right;
+    case VK_DOWN:
+        return reimu::video::Key::Down;
+    case VK_SNAPSHOT:
+        return reimu::video::Key::PrintScreen;
+    case VK_INSERT:
+        return reimu::video::Key::Insert;
+    case VK_DELETE:
+        return reimu::video::Key::Delete;
+    case VK_LWIN:
+    case VK_RWIN:
+        return reimu::video::Key::Win;
+    case VK_NUMLOCK:
+        return reimu::video::Key::NumLock;
+    case VK_SCROLL:
+        return reimu::video::Key::ScrollLock;
+    case VK_F1:
+        return reimu::video::Key::F1;
+    case VK_F2:
+        return reimu::video::Key::F2;
+    case VK_F3:
+        return reimu::video::Key::F3;
+    case VK_F4:
+        return reimu::video::Key::F4;
+    case VK_F5:
+        return reimu::video::Key::F5;
+    case VK_F6:
+        return reimu::video::Key::F6;
+    case VK_F7:
+        return reimu::video::Key::F7;
+    case VK_F8:
+        return reimu::video::Key::F8;
+    case VK_F9:
+        return reimu::video::Key::F9;
+    case VK_F10:
+        return reimu::video::Key::F10;
+    case VK_F11:
+        return reimu::video::Key::F11;
+    case VK_F12:
+        return reimu::video::Key::F12;
+    default:
+        return reimu::video::Key::Invalid;
+    }
+}
+
 LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param) {
     auto *win = (Win32Window *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
     
@@ -90,6 +167,43 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param
         });
 
         break;
+    } case WM_KEYDOWN: {
+        reimu::video::KeyboardEvent event;
+
+        auto key = win32_to_reimu_key_code(w_param);
+        if (key == reimu::video::Key::Invalid) {
+            // Will get handled by TranslateMessage
+            break;
+        }
+
+        event.is_ctrl = GetAsyncKeyState(VK_CONTROL) != 0;
+        event.is_shift = GetAsyncKeyState(VK_SHIFT) != 0;
+        event.is_alt = GetAsyncKeyState(VK_MENU) != 0;
+        event.is_win = GetAsyncKeyState(VK_LWIN) != 0;
+        event.is_down = true;
+        event.key = key;
+
+        win->queue_input_event({
+            .type = reimu::video::InputEvent::Keyboard,
+            .key = event
+        });
+
+        break;
+    } case WM_CHAR: {
+        reimu::video::KeyboardEvent event;
+
+        event.is_ctrl = GetAsyncKeyState(VK_CONTROL) != 0;
+        event.is_shift = GetAsyncKeyState(VK_SHIFT) != 0;
+        event.is_alt = GetAsyncKeyState(VK_MENU) != 0;
+        event.is_win = GetAsyncKeyState(VK_LWIN) != 0;
+        event.is_down = true;
+
+        event.key = (reimu::video::Key)w_param;
+
+        win->queue_input_event({
+            .type = reimu::video::InputEvent::Keyboard,
+            .key = event
+        });
     }
     }
 
@@ -127,10 +241,10 @@ reimu::video::Window *WindowsDriver::window_create(const reimu::Vector2i &size) 
     return win;
 }
 
-int WindowsDriver::get_window_client_handle() {
+os_handle_t WindowsDriver::get_window_client_handle() {
     // Unfortunately the way win32 works it has a distinct message queue,
     // so we can't (to my knowledge) just take a handle and wait on it
-    return -1;
+    return (HANDLE)-1;
 }
 
 void WindowsDriver::window_client_dispatch() {
@@ -139,6 +253,10 @@ void WindowsDriver::window_client_dispatch() {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+}
+
+reimu::Vector2u WindowsDriver::get_display_size() {
+    return reimu::Vector2u(GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
 }
 
 void WindowsDriver::finish() {

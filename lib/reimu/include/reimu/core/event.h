@@ -1,5 +1,8 @@
 #pragma once
 
+#include <reimu/os/error.h>
+#include <reimu/os/handle.h>
+#include <reimu/core/result.h>
 #include <reimu/core/string_id.h>
 #include <reimu/core/result.h>
 #include <reimu/os/error.h>
@@ -28,12 +31,12 @@ public:
     /**
      * @brief Watch an OS handle for events, calling callback when they occur.
     */
-    virtual Result<void, OSError> watch_os_handle(int fd, EventCallback callback) = 0;
+    virtual Result<void, OSError> watch_os_handle(os_handle_t fd, EventCallback callback) = 0;
 
     /**
      * @brief Stop watching an OS handle for events.
     */
-    virtual void unwatch_os_handle(int fd) = 0;
+    virtual void unwatch_os_handle(os_handle_t fd) = 0;
 
     /**
      * @brief Indefinitely polls and dispatches events.

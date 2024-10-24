@@ -1,6 +1,7 @@
 #pragma once
 
 #include <reimu/graphics/vector.h>
+#include <reimu/os/handle.h>
 
 namespace reimu::video {
 
@@ -21,7 +22,7 @@ public:
      * 
      * @return int 
      */
-    virtual int get_window_client_handle() = 0;
+    virtual os_handle_t get_window_client_handle() = 0;
 
     /**
      * @brief Process any events from the window server.

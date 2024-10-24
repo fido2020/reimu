@@ -1,4 +1,5 @@
 #include <reimu/core/event.h>
+#include <reimu/os/handle.h>
 
 #include <map>
 #include <memory>
@@ -18,7 +19,7 @@ public:
         close(m_epoll_fd);
     }
 
-    Result<void, OSError> watch_os_handle(int fd, EventCallback cb) override {
+    Result<void, OSError> watch_os_handle(os_handle_t fd, EventCallback cb) override {
         auto callback_ptr = std::make_unique<EventCallback>(std::move(cb));
         
         // Give a pointer to our callback to epoll
@@ -35,7 +36,7 @@ public:
         return OK();
     }
 
-    void unwatch_os_handle(int fd) override {
+    void unwatch_os_handle(os_handle_t fd) override {
         if (epoll_ctl(m_epoll_fd, EPOLL_CTL_DEL, fd, nullptr) < 0) {
             logger::fatal("Failed to remove epoll event: {}", strerror(errno));
         }
