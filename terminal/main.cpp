@@ -1,3 +1,6 @@
+#define NTDDI_VERSION 0x0A000006
+#define _WIN32_WINNT 0x0A00
+
 #include <reimu/video/video.h>
 #include <reimu/video/driver.h>
 #include <reimu/core/event.h>
@@ -5,6 +8,12 @@
 #include <reimu/gui/terminal.h>
 #include <reimu/gui/window.h>
 #include <reimu/gui/dialog.h>
+#include <reimu/os/error.h>
+#include <reimu/os/fs.h>
+
+#include <list>
+
+#ifdef __linux__
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -12,7 +21,192 @@
 #include <spawn.h>
 #include <pty.h>
 
-#include <list>
+reimu::Result<int, reimu::OSError> os_open_pty(os_handle_t &master_in, os_handle_t &slave_in, os_handle_t &master_out, os_handle_t &slave_out) {
+    int master_fd, slave_fd;
+    if (openpty(&master_fd, &slave_fd, nullptr, nullptr, nullptr) < 0) {
+        return ERR(reimu::OSError{errno});
+    }
+
+    master_in = master_fd;
+    master_out = dup(master_fd);
+    slave_in = slave_fd;
+    slave_out = dup(slave_fd);
+
+    return OK(master_fd);
+}
+
+reimu::Result<size_t, reimu::OSError> os_pty_read(os_handle_t handle, void *buffer, size_t size) {
+    auto ret = read(handle, buffer, size);
+    if (ret < 0) {
+        return ERR(reimu::OSError{errno});
+    }
+
+    return OK(ret);
+}
+
+reimu::Result<int, reimu::OSError> os_create_process_pty(const char *path, char *const argv[], int pty,
+        os_handle_t master_in, os_handle_t slave_in, os_handle_t master_out, os_handle_t slave_out) {
+    (void)pty;
+
+    int master_fd, slave_fd;
+    if (openpty(&master_fd, &slave_fd, nullptr, nullptr, nullptr) < 0) {
+        return ERR(reimu::OSError{errno});
+    }
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        return ERR(reimu::OSError{errno});
+    }
+
+    if (pid == 0) {
+        if (setsid() < 0) {
+            reimu::logger::fatal("Failed to setsid: {}", strerror(errno));
+        }
+
+        // Child process
+        close(master_in);
+        close(master_out);
+
+        if (dup2(slave_in, STDIN_FILENO) < 0) {
+            reimu::logger::fatal("Failed to redirect stdin");
+        }
+
+        if (dup2(slave_out, STDOUT_FILENO) < 0) {
+            reimu::logger::fatal("Failed to redirect stdout");
+        }
+
+        if (dup2(slave_out, STDERR_FILENO) < 0) {
+            reimu::logger::fatal("Failed to redirect stderr");
+        }
+
+        if(ioctl(slave_in, TIOCSCTTY, 0)) {
+            reimu::logger::fatal("Failed to set controlling TTY: {}", strerror(errno));
+        }
+
+        close(slave_in);
+        close(slave_out);
+
+        execvp(path, argv);
+        return ERR(reimu::OSError{errno});
+    }
+
+    return OK(pid);
+}
+
+void os_pty_set_size(os_handle_t handle, int cols, int rows) {
+    struct winsize ws;
+    ws.ws_col = cols;
+    ws.ws_row = rows;
+    ws.ws_xpixel = 0;
+    ws.ws_ypixel = 0;
+
+    ioctl(handle, TIOCSWINSZ, &ws);
+}
+
+#elif defined(REIMU_WIN32)
+
+#include <windows.h>
+#include <wincon.h>
+
+reimu::Result<os_handle_t, reimu::OSError> os_open_pty(os_handle_t &master_in, os_handle_t &slave_in, os_handle_t &master_out, os_handle_t &slave_out) {
+    // Create pipes for the PTY
+    HANDLE master_read, master_write;
+    HANDLE slave_read, slave_write;
+
+    SECURITY_ATTRIBUTES sa = {0};
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.bInheritHandle = TRUE;
+
+    if (!CreatePipe(&master_read, &slave_write, &sa, 0)) {
+        return ERR(reimu::OSError{GetLastError()});
+    }
+
+    if (!CreatePipe(&slave_read, &master_write, &sa, 0)) {
+        return ERR(reimu::OSError{GetLastError()});
+    }
+
+    master_in = master_read;
+    master_out = master_write;
+
+    slave_in = slave_read;
+    slave_out = slave_write;
+
+    // Create a PTY (will only work on Windows 10 and up)
+    HPCON hpcon;
+
+    if (CreatePseudoConsole({80, 25}, slave_read, slave_write, 0, &hpcon) != S_OK) {
+        return ERR(reimu::OSError{GetLastError()});
+    }
+
+    SetConsoleMode(master_write, ENABLE_VIRTUAL_TERMINAL_INPUT);
+
+    CloseHandle(slave_read);
+    CloseHandle(slave_write);
+
+    return OK(hpcon);
+}
+
+reimu::Result<size_t, reimu::OSError> os_pty_read(os_handle_t handle, void *buffer, size_t size) {
+    // Get available data in the PTY
+    DWORD available;
+    if (!PeekNamedPipe(handle, nullptr, 0, nullptr, &available, nullptr)) {
+        return ERR(reimu::OSError{GetLastError()});
+    }
+
+    size = std::min(size, (size_t)available);
+    if (size == 0) {
+        return OK(0);
+    }
+
+    DWORD read;
+    if (!ReadFile(handle, buffer, size, &read, nullptr)) {
+        return ERR(reimu::OSError{GetLastError()});
+    }
+
+    return OK(read);
+}
+
+reimu::Result<int, reimu::OSError> os_create_process_pty(const char *path, char *const argv[], HPCON hpcon,
+        os_handle_t master_in, os_handle_t slave_in, os_handle_t master_out, os_handle_t slave_out) {
+    // Create a new process
+    STARTUPINFOEX si = {0};
+    si.StartupInfo.cb = sizeof(STARTUPINFOEX);
+
+    size_t size = 0;
+    InitializeProcThreadAttributeList(nullptr, 1, 0, &size);
+
+    std::unique_ptr<uint8_t[]> attr = std::make_unique<uint8_t[]>(size);
+    si.lpAttributeList = (PPROC_THREAD_ATTRIBUTE_LIST)attr.get();
+
+    if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0,
+            &size)) {
+        return ERR(reimu::OSError{GetLastError()});
+    }
+
+    // Attach the PTY to the new process
+    if (!UpdateProcThreadAttribute(si.lpAttributeList, 0,
+            PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hpcon, sizeof(HPCON), nullptr, nullptr)) {
+        return ERR(reimu::OSError{GetLastError()});
+    }
+
+    PROCESS_INFORMATION pi = {0};
+
+    if (!CreateProcess(path, nullptr, nullptr, nullptr, FALSE, EXTENDED_STARTUPINFO_PRESENT, nullptr, nullptr, &si.StartupInfo, &pi)) {
+        return ERR(reimu::OSError{GetLastError()});
+    }
+
+    DeleteProcThreadAttributeList(si.lpAttributeList);
+
+    return OK(pi.dwProcessId);
+}
+
+void os_pty_set_size(os_handle_t handle, int cols, int rows) {
+    if(ResizePseudoConsole(handle, {(SHORT)cols, (SHORT)rows}) != S_OK) {
+        reimu::logger::warn("Failed to resize PTY");
+    }
+}
+
+#endif
 
 using namespace reimu;
 
@@ -23,13 +217,12 @@ public:
             EventLoop::create().ensure()
         };
 
-        int slave_fd;
-        if (openpty(&m_pty_fd, &slave_fd, nullptr, nullptr, nullptr) < 0) {
-            gui::message_box("openpty() failed", "Error", gui::MessageBoxButtons::ok());
-            logger::fatal("Failed to openpty");
-        }
+        os_handle_t slave_in;
+        os_handle_t slave_out;
+        
+        m_pty_handle = os_open_pty(m_pty_in, slave_in, m_pty_out, slave_out).ensure();
 
-        m_event_loop->watch_os_handle(m_pty_fd, [this]() {
+        m_event_loop->watch_os_handle(m_pty_in, [this]() {
             pty_read();
         });
 
@@ -57,28 +250,46 @@ public:
 
             switch (ev.key.key) {
             case video::Key::Return:
-                write(m_pty_fd, "\n", 1);
+#ifdef REIMU_UNIX
+                os::write(m_pty_out, "\n", 1);
+#else
+                // For SOME reason (i can't figure it out),
+                // we only need to send \r on Windows.
+                os::write(m_pty_out, "\r", 1);
+#endif
                 break;
             case video::Key::Backspace:
-                write(m_pty_fd, "\b", 1);
+#ifdef REIMU_UNIX
+                os::write(m_pty_out, "\b", 1);
+#else
+                // For SOME reason windows likes to use \x7f (DEL) for backspace.
+                os::write(m_pty_out, "\x7f", 1);
+#endif
+                break;
+            case video::Key::Tab:
+                os::write(m_pty_out, "\t", 1);
                 break;
             case video::Key::Left:
-                write(m_pty_fd, "\e[D", 3);
+                os::write(m_pty_out, "\e[D", 3);
                 break;
             case video::Key::Right:
-                write(m_pty_fd, "\e[C", 3);
+                os::write(m_pty_out, "\e[C", 3);
                 break;
             case video::Key::Up:
-                write(m_pty_fd, "\e[A", 3);
+                os::write(m_pty_out, "\e[A", 3);
                 break;
             case video::Key::Down:
-                write(m_pty_fd, "\e[B", 3);
+                os::write(m_pty_out, "\e[B", 3);
+                break;
+            case video::Key::Space:
+                os::write(m_pty_out, " ", 1);
                 break;
             case 'c':
             case 'C':
                 if (ev.key.is_ctrl) {
+#ifdef REIMU_UNIX
                     // Get the foreground process group
-                    pid_t pgid = tcgetpgrp(m_pty_fd);
+                    pid_t pgid = tcgetpgrp(m_pty_out);
                     if (pgid < 0) {
                         logger::warn("Failed to get foreground process group: {}", strerror(errno));
                         break;
@@ -88,14 +299,17 @@ public:
                     if (killpg(pgid, SIGINT) < 0) {
                         logger::warn("Failed to send SIGINT to process group: {}", strerror(errno));
                     }
+#endif
                 } else {
-                    write(m_pty_fd, &ev.key.key, 1);
+                    os::write(m_pty_out, &ev.key.key, 1);
                 }
                 break;
             case 0:
                 break;
             default:
-                write(m_pty_fd, &ev.key.key, 1);
+                if (isprint(ev.key.key)) {
+                    os::write(m_pty_out, &ev.key.key, 1);
+                }
                 break;
             }
         });
@@ -105,59 +319,25 @@ public:
         root->add_child(terminal_widget);
         m_window->render();
 
-        // Update the window size.
-        struct winsize ws;
-        ws.ws_row = m_terminal_widget->get_size().y;
-        ws.ws_col = m_terminal_widget->get_size().x;
+        os_pty_set_size(m_pty_handle, m_terminal_widget->get_size().x, m_terminal_widget->get_size().y);
 
-        ioctl(m_pty_fd, TIOCSWINSZ, &ws);
+        auto shell = os::default_shell_path().ensure();
+        char * const argv[] = { shell.data(), nullptr};
 
-        // Spawn a child process with the pty as its stdin/stdout/stderr.
-        m_child_pid = fork();
-        if (m_child_pid < 0) {
-            gui::message_box("Failed to fork", "Error", gui::MessageBoxButtons::ok());
-            logger::fatal("Failed to fork");
-        }
-
-        if (m_child_pid == 0) {
-            if (setsid() < 0) {
-                logger::fatal("Failed to setsid: {}", strerror(errno));
-            }
-
-            close(STDIN_FILENO);
-            close(STDOUT_FILENO);
-            close(STDERR_FILENO);
-
-            dup2(slave_fd, STDIN_FILENO);
-            dup2(slave_fd, STDOUT_FILENO);
-            dup2(slave_fd, STDERR_FILENO);
-
-            if(ioctl(slave_fd, TIOCSCTTY, 0)) {
-                logger::fatal("Failed to set controlling TTY: {}", strerror(errno));
-            }
-
-            close(slave_fd);
-            close(m_pty_fd);
-
-            char *const argv[] = { "/bin/zsh", nullptr };
-            auto *envp = environ;
-
-            if (execve("/bin/zsh", argv, envp) < 0) {
-                logger::fatal("Failed to execve");
-            }
-        }
-
-        close(slave_fd);
+        os_create_process_pty(shell.c_str(), argv, m_pty_handle, m_pty_in, slave_in, m_pty_out, slave_out)
+            .ensure();
     }
 
     void run() {
         m_window->render();
         m_event_loop->run();
+
+        reimu::logger::debug("Exiting\n");
     }
 
     void pty_read() {
         char buf[1024];
-        ssize_t n = read(m_pty_fd, buf, sizeof(buf));
+        ssize_t n = os_pty_read(m_pty_in, buf, sizeof(buf)).ensure();
         if (n < 0) {
             logger::warn("Failed to read from pty");
             return;
@@ -526,7 +706,9 @@ private:
     std::string m_escape_buf;
     EscapeState m_escape_state = EscapeState::None;
 
-    int m_pty_fd;
+    os_handle_t m_pty_out;
+    os_handle_t m_pty_in;
+    os_handle_t m_pty_handle;
 
     pid_t m_child_pid;
 

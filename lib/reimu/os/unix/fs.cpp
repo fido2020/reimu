@@ -5,6 +5,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include <stdio.h>
+
 namespace reimu::os {
 
 Result<void, OSError> make_path(const std::string &path, int mode) {
@@ -33,6 +35,32 @@ Result<void, OSError> make_path(const std::string &path, int mode) {
         }
 
         return ERR(errno);
+    }
+
+    return OK();
+}
+
+Result<std::string, OSError> default_shell_path() {
+    auto path = getenv("SHELL");
+    if (path == nullptr) {
+        return ERR(OSError{ENOENT});
+    }
+
+    return OK(std::string{path});
+}
+
+reimu::Result<size_t, reimu::OSError> write(os_handle_t handle, const void *buffer, size_t size) {
+    auto ret = ::write(handle, buffer, size);
+    if (ret < 0) {
+        return ERR(reimu::OSError{errno});
+    }
+
+    return OK(ret);
+}
+
+reimu::Result<void, reimu::OSError> close(os_handle_t handle) {
+    if (::close(handle) < 0) {
+        return ERR(reimu::OSError{errno});
     }
 
     return OK();
