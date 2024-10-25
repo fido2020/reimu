@@ -88,7 +88,8 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
     renderer->m_error_callback = [](WGPUErrorType type, const char *message, void *) {
         logger::fatal("WebGPU device error ({:x}): {}", (uint64_t)type, message);
     };
-    wgpuDeviceSetUncapturedErrorCallback(device, renderer->m_error_callback, nullptr);
+    
+    //wgpuDeviceSetUncapturedErrorCallback(device, renderer->m_error_callback, nullptr);
 
     auto queue = wgpuDeviceGetQueue(device);
     if (!queue) {
@@ -168,10 +169,6 @@ WebGPURenderer::~WebGPURenderer() {
         wgpuQueueRelease(m_cmd_queue);
     }
 
-    if (m_swap_chain) {
-        wgpuSwapChainRelease(m_swap_chain);
-    }
-
     for (auto shader : m_shaders) {
         wgpuShaderModuleRelease(shader.second);
     }
@@ -195,7 +192,22 @@ WebGPURenderer::~WebGPURenderer() {
 
 void WebGPURenderer::render() {
     // Draw the frame
-    auto texture_view = wgpuSwapChainGetCurrentTextureView(m_swap_chain);
+    WGPUSurfaceTexture surface_texture;
+
+    wgpuSurfaceGetCurrentTexture(m_surface, &surface_texture);
+
+    WGPUTextureViewDescriptor viewDescriptor;
+    viewDescriptor.nextInChain = nullptr;
+    viewDescriptor.label = "Surface texture view";
+    viewDescriptor.format = wgpuTextureGetFormat(surface_texture.texture);
+    viewDescriptor.dimension = WGPUTextureViewDimension_2D;
+    viewDescriptor.baseMipLevel = 0;
+    viewDescriptor.mipLevelCount = 1;
+    viewDescriptor.baseArrayLayer = 0;
+    viewDescriptor.arrayLayerCount = 1;
+    viewDescriptor.aspect = WGPUTextureAspect_All;
+
+    auto texture_view = wgpuTextureCreateView(surface_texture.texture, &viewDescriptor);
     if (!texture_view) {
         logger::warn("Failed to get current texture view");
         return;
@@ -224,7 +236,7 @@ void WebGPURenderer::render() {
     }
 
     wgpuTextureViewRelease(texture_view);
-    wgpuSwapChainPresent(m_swap_chain);
+    wgpuSurfacePresent(m_surface);
 }
 
 Result<void, ReimuError> WebGPURenderer::load_shader(const std::string &name, const char *data) {
@@ -394,8 +406,6 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
 void WebGPURenderer::resize_viewport(const Vector2i &size) {
     m_viewport_size = size;
 
-    wgpuSwapChainRelease(m_swap_chain);
-
     create_swap_chain().ensure();
 }
 
@@ -425,20 +435,19 @@ void WebGPURenderer::write_buffer(WGPUBuffer buffer, size_t offset, const void *
 }
 
 Result<void, ReimuError> WebGPURenderer::create_swap_chain() {
-    WGPUSwapChainDescriptor swap_chain_desc = {};
-    swap_chain_desc.nextInChain = nullptr;
+    WGPUSurfaceConfiguration surface_config = {};
+    surface_config.nextInChain = nullptr;
 
-    swap_chain_desc.width = static_cast<uint32_t>(m_viewport_size.x);
-    swap_chain_desc.height = static_cast<uint32_t>(m_viewport_size.y);
+    surface_config.width = static_cast<uint32_t>(m_viewport_size.x);
+    surface_config.height = static_cast<uint32_t>(m_viewport_size.y);
 
-    swap_chain_desc.usage = WGPUTextureUsage_RenderAttachment;
-    swap_chain_desc.format = SWAP_CHAIN_FORMAT;
-    swap_chain_desc.presentMode = WGPUPresentMode_Fifo;
+    surface_config.usage = WGPUTextureUsage_RenderAttachment;
+    surface_config.format = SWAP_CHAIN_FORMAT;
+    surface_config.presentMode = WGPUPresentMode_Fifo;
 
-    m_swap_chain = wgpuDeviceCreateSwapChain(m_device, m_surface, &swap_chain_desc);
-    if (!m_swap_chain) {
-        return ERR(ReimuError::RendererError);
-    }
+    surface_config.device = m_device;
+
+    wgpuSurfaceConfigure(m_surface, &surface_config);
 
     return OK();
 }

@@ -56,12 +56,11 @@ private:
     WGPUSurface m_surface = nullptr;
     WGPUAdapter m_adapter = nullptr;
     WGPUDevice m_device = nullptr;
-    WGPUSwapChain m_swap_chain = nullptr;
 
     WGPUQueue m_cmd_queue = nullptr;
 
     WGPUErrorCallback m_error_callback;
-    WGPUQueueWorkDoneCallback m_queue_callback;
+    WGPUQueueOnSubmittedWorkDoneCallback m_queue_callback;
 };
 
 } 
