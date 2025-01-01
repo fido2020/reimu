@@ -40,19 +40,21 @@ Window::Window(video::Window *window, graphics::Renderer *renderer)
     m_root = std::make_unique<RootContainer>(this,
         vector_static_cast<float>(renderer->get_viewport_size()));
     m_root->create_texture_if_needed(m_create_texture_fn);
+
+    m_res_mgr = std::make_shared<ResourceManager>();
 }
 
 void Window::render() {
+    DefaultUIPainter painter{*m_res_mgr};
+
     if (m_root->needs_layout_update()) {
         m_root->update_layout(vector_static_cast<float>(m_renderer->get_viewport_size()));
         
-        DefaultUIPainter painter{};
         m_root->repaint(painter);
 
         m_compositor->clear_clips();
         m_root->add_clips(m_compositor->get_add_clip_fn());
     } else if(m_root->needs_repaint()) {
-        DefaultUIPainter painter{};
         m_root->repaint(painter);
     }
 

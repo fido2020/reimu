@@ -8,6 +8,12 @@ struct StringID {
     uint64_t hash;
 };
 
+struct StringIDHash {
+    size_t operator()(const StringID &id) const {
+        return id.hash;
+    }
+};
+
 constexpr bool operator==(const StringID &l, const StringID &r) {
     return l.hash == r.hash;
 }

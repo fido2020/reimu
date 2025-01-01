@@ -1,5 +1,7 @@
 #include <reimu/graphics/font.h>
 
+#include <reimu/core/resource_manager.h>
+
 #define FIXED_FONT_PATH "font.ttf"
 
 #include "freetype.h"
@@ -11,16 +13,13 @@ struct detail::FontData {
     std::vector<uint8_t> data;
 };
 
-Result<Font *, ReimuError> Font::create() {
-    FILE *file = fopen(FIXED_FONT_PATH, "rb");
-    if (!file) {
-        return ERR(ReimuError::FileNotFound);
-    }
+Result<Font *, ReimuError> Font::create(File &file) {
+    std::vector<uint8_t> font_data = file.read(file.file_size()).ensure();
 
-    std::vector<uint8_t> font_data;
-
-    auto r = FreeType::instance().new_face(file, 0, font_data); 
+    auto r = FreeType::instance().new_face(font_data, 0); 
     if (r.is_err()) {
+        auto err = r.move_err();
+        logger::debug("Failed to load font: {:x}", (err.error));
         return ERR(ReimuError::FailedToLoadFont);
     }
 
@@ -28,6 +27,10 @@ Result<Font *, ReimuError> Font::create() {
     font->m_data = std::make_unique<detail::FontData>(r.ensure(), std::move(font_data));
 
     return OK(font);
+}
+
+StringID Font::obj_type_id() const {
+    return Font::type_id();
 }
 
 Font::Font() {}

@@ -2,6 +2,7 @@
 
 #include <reimu/core/error.h>
 #include <reimu/core/logger.h>
+#include <reimu/core/util.h>
 
 #include <utility>
 
@@ -17,7 +18,9 @@ namespace detail {
 template<typename T>
 class Optional {
 public:
-    Optional(T data, const detail::SomeTag<T> &tag)
+    Optional() : m_has_some{false} {}
+
+    Optional(T data)
         : m_data{std::move(data)}, m_has_some{true} {}
 
     Optional(const detail::NoneTag &tag)
@@ -41,11 +44,11 @@ public:
         return move_val();
     }
 
+private:
     inline T &&move_val() {
         return std::move(m_data);
     }
 
-private:
     union {
         T m_data;
     };
@@ -55,5 +58,5 @@ private:
 
 } // namespace reimu
 
-#define OPT_SOME(x) (reimu::Optional{x, {}})
+#define OPT_SOME(x) (reimu::Optional{x})
 #define OPT_NONE (reimu::detail::NoneTag{})

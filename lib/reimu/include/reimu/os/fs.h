@@ -2,6 +2,7 @@
 
 #include <reimu/os/error.h>
 #include <reimu/os/handle.h>
+#include <reimu/core/file.h>
 #include <reimu/core/result.h>
 
 #include <string>
@@ -16,5 +17,7 @@ Result<std::string, OSError> default_shell_path();
 
 Result<size_t, OSError> write(os_handle_t handle, const void *buffer, size_t size);
 Result<void, reimu::OSError> close(os_handle_t handle);
+
+Result<std::unique_ptr<File>, reimu::OSError> open(const std::string &path, FileMode mode);
 
 }

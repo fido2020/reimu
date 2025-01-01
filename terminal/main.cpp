@@ -237,12 +237,22 @@ public:
         auto win = gui::Window::create({96*8, 52*16}).ensure();
         win->set_title("reimu-terminal");
 
+        auto res_mgr = win->resource_manager();
+
+        auto font_or_err = res_mgr->load_from_file<graphics::Font>("monospace.ttf", "font_terminal"_hashid);
+        if (font_or_err.is_err()) {
+            gui::message_box("Error", "Failed to load font", gui::MessageBoxButtons::ok());
+            throw std::runtime_error("Failed to load font");
+        }
+
+        auto font = font_or_err.ensure();
+
         m_window = std::unique_ptr<gui::Window>{ win };
 
         auto *root = &m_window->root();
         root->layout.layout_direction = gui::LayoutDirection::Horizontal;
 
-        auto *terminal_widget = new gui::TerminalWidget();
+        auto *terminal_widget = new gui::TerminalWidget(font);
         terminal_widget->layout.width = terminal_widget->layout.height = gui::Size::inherit();
 
         terminal_widget->bind_event_callback("on_key_down"_hashid, [this]() {
@@ -361,7 +371,7 @@ public:
                 if (cp.has_some()) {
                     it += consumed - 1;
 
-                    m_terminal_widget->put_char(cp.move_val());
+                    m_terminal_widget->put_char(cp.ensure());
                 }
             } else {
                 switch (*it) {

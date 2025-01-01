@@ -1,5 +1,7 @@
 #pragma once
 
+#include <reimu/core/resource_manager.h>
+
 #include <reimu/graphics/color.h>
 #include <reimu/graphics/texture.h>
 #include <reimu/graphics/text.h>
@@ -33,6 +35,7 @@ public:
     virtual void draw_frame(const std::string &title, bool is_active) = 0;
     virtual void draw_button(const std::string &label, bool is_pressed) = 0;
     virtual void draw_label(const std::string &label) = 0;
+    virtual void draw_text(const std::string &text, const Rectf &bounds) = 0;
     virtual void draw_background() = 0;
 
     /*virtual void draw_textbox(std::string text, int cur_pos, bool is_pressed) = 0;*/
@@ -46,15 +49,18 @@ protected:
 
 class DefaultUIPainter : public UIPainter {
 public:
-    DefaultUIPainter();
+    DefaultUIPainter(ResourceManager &rm);
 
     void draw_frame(const std::string &title, bool is_active) override;
     void draw_button(const std::string &label, bool is_pressed) override;
     void draw_label(const std::string &label) override;
+    void draw_text(const std::string &text, const Rectf &bounds) override;
     void draw_background() override;
 
 private:
     graphics::Text m_text;
+
+    ResourceManager &m_res_mgr;
 };
 
 }

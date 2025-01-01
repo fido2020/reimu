@@ -19,7 +19,7 @@ public:
         All
     };
 
-    TerminalWidget();
+    TerminalWidget(std::shared_ptr<graphics::Font> font);
     ~TerminalWidget() override;
 
     void put_char(uint32_t c);
@@ -58,6 +58,8 @@ public:
 private:
     std::list<std::vector<uint32_t>> m_lines;
     TerminalPrivateData *m_data;
+
+    std::shared_ptr<graphics::Font> m_font;
 
     Color m_fg_color = Color::white();
     Color m_bg_color = Color::black();

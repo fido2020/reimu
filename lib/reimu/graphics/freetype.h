@@ -29,8 +29,7 @@ public:
     }
 
     // Thread-safe wrapper functions for FreeType
-    reimu::Result<FT_Face, FreeTypeError> new_face(FILE *file, FT_Long index,
-        std::vector<uint8_t>& outData);
+    reimu::Result<FT_Face, FreeTypeError> new_face(std::vector<uint8_t> &data, FT_Long index);
     reimu::Result<void, FreeTypeError> done_face(FT_Face face);
 
 private:

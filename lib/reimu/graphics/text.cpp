@@ -16,23 +16,11 @@ FreeType::FreeType() {
     }
 }
 
-reimu::Result<FT_Face, FreeTypeError> FreeType::new_face(FILE *file, FT_Long index,
-        std::vector<uint8_t>& outData) {
+reimu::Result<FT_Face, FreeTypeError> FreeType::new_face(std::vector<uint8_t> &data, FT_Long index) {
     std::unique_lock lockFT(m_lock);
 
-    fseek(file, 0, SEEK_END);
-
-    size_t fSize = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    outData.resize(fSize);
-
-    if (fread(outData.data(), 1, fSize, file) < 0) {
-        return ERR(FreeTypeError{ FT_Err_Cannot_Open_Resource });
-    }
-
     FT_Face face;
-    if(FT_Error e = FT_New_Memory_Face(m_library, outData.data(), fSize, index, &face); e) {
+    if(FT_Error e = FT_New_Memory_Face(m_library, data.data(), data.size(), index, &face); e) {
         return ERR(FreeTypeError{ e });
     }
 
@@ -52,9 +40,7 @@ reimu::Result<void, FreeTypeError> FreeType::done_face(FT_Face face) {
 
 namespace reimu::graphics {
 
-Text::Text() {
-    m_font = std::shared_ptr<Font>{ Font::create().ensure() };
-}
+Text::Text() {}
 
 Text::Text(std::u32string text) : Text() { set_text(std::move(text)); }
 
@@ -142,10 +128,11 @@ void Text::render(Surface &dest, const Rectf &bounds) {
             x_off += face->glyph->metrics.horiBearingX >> 6;
         }
 
+        int x_min = std::max(0, final_bounds.x - x_pos);
         int x_max = std::min((int)slot->bitmap.width, final_bounds.z - x_pos);
 
         // Copy the glyph into the texture
-        for (unsigned int y = 0; y < slot->bitmap.rows && y_offset < final_bounds.w; y++, y_offset++) {
+        for (int y = 0; y < slot->bitmap.rows && y_offset < final_bounds.w; y++, y_offset++) {
             if (y_offset + y < 0) {
                 continue;
             }
@@ -154,7 +141,7 @@ void Text::render(Surface &dest, const Rectf &bounds) {
             uint8_t *src = (uint8_t*)slot->bitmap.buffer + y * slot->bitmap.pitch;
 
             Color c = m_color;
-            for (unsigned int x = 0; x < x_max; x++) {
+            for (int x = x_min; x < x_max; x++) {
                 uint8_t v = src[x];
                 
                 if (v) {

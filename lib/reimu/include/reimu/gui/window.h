@@ -1,6 +1,7 @@
 #pragma once
 
 #include <reimu/core/error.h>
+#include <reimu/core/resource_manager.h>
 #include <reimu/gui/widget.h>
 #include <reimu/video/window.h>
 #include <reimu/video/input.h>
@@ -66,6 +67,10 @@ public:
         return m_last_input_event;
     }
 
+    std::shared_ptr<ResourceManager> resource_manager() {
+        return m_res_mgr;
+    }
+
 private:
     Window(video::Window *window, graphics::Renderer *renderer);
 
@@ -85,6 +90,8 @@ private:
     std::unique_ptr<graphics::Renderer> m_renderer;
 
     std::unique_ptr<Compositor> m_compositor;
+
+    std::shared_ptr<ResourceManager> m_res_mgr;
 
     Vector2f m_pointer = {0, 0};
 

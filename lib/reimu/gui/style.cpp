@@ -1,6 +1,7 @@
 #include <reimu/gui/style.h>
 
 #include <reimu/core/unicode.h>
+#include <reimu/graphics/font.h>
 
 #include <assert.h>
 
@@ -21,7 +22,16 @@ graphics::Painter &UIPainter::get_painter() {
     return *m_current_painter;
 }
 
-DefaultUIPainter::DefaultUIPainter() {
+DefaultUIPainter::DefaultUIPainter(ResourceManager &rm) : m_res_mgr(rm) {
+    auto fon = m_res_mgr.get("font_default"_hashid);
+    if (fon.has_some()) {
+        m_text.set_font(Resource::as<graphics::Font>(fon.ensure()).ensure());
+    } else {
+        auto fon = m_res_mgr.load_from_file<graphics::Font>("font.ttf", "font_default"_hashid).ensure();
+
+        m_text.set_font(std::move(fon));
+    }
+
     m_style.background_color = Color(200, 200, 190);
     m_style.text_color = Color(0, 0, 0);
     m_style.highlight_color = Color(255, 255, 255);
@@ -114,15 +124,20 @@ void DefaultUIPainter::draw_button(const std::string &label, bool is_pressed) {
 
 void DefaultUIPainter::draw_label(const std::string &label) {
     auto &painter = get_painter();
-    auto &style = get_style();
-
     auto size = vector_static_cast<float>(painter.surface_size());
 
-    m_text.set_text(to_utf32(label).ensure());
+    draw_text(label, {2, 2, size.x, size.y});
+}
+
+void DefaultUIPainter::draw_text(const std::string &text, const Rectf &bounds) {
+    auto &painter = get_painter();
+    auto &style = get_style();
+
+    m_text.set_text(to_utf32(text).ensure());
     m_text.set_font_size_px(16);
     m_text.set_color(Color(0, 0, 0));
     
-    m_text.render(painter.surface(), {2, 2, size.x, size.y});
+    m_text.render(painter.surface(), bounds);
 }
 
 void DefaultUIPainter::draw_background() {

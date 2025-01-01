@@ -13,7 +13,7 @@ struct TerminalPrivateData {
     term::Grid grid{80, 25};
 };
 
-TerminalWidget::TerminalWidget() {
+TerminalWidget::TerminalWidget(std::shared_ptr<graphics::Font> font) : m_font(std::move(font)) {
     m_data = new TerminalPrivateData;
 }
 
@@ -125,6 +125,7 @@ void TerminalWidget::repaint(UIPainter &painter) {
 
     // TODO: WOW this is inefficient and really bad
     auto text_obj = graphics::Text{};
+    text_obj.set_font(m_font);
     text_obj.set_font_size_px(16);
 
     auto draw_cell = [&](uint32_t ch, int row, int col, uint32_t fg_color, uint32_t bg_color) {

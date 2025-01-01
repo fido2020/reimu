@@ -63,6 +63,8 @@ private:
 struct ReimuError {
     enum {
         FileNotFound = 0x1,
+        IOError = 0x2,
+        AccessError = 0x3,
         WindowCreationFailed = 0x1000,
         FailedToLoadFont = 0x1001,
         NoSuitableRenderer = 0x2000,

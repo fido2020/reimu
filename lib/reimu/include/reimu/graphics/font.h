@@ -1,6 +1,8 @@
 #pragma once
 
+#include <reimu/core/file.h>
 #include <reimu/core/result.h>
+#include <reimu/core/resource.h>
 #include <memory>
 #include <mutex>
 
@@ -10,12 +12,18 @@ namespace detail {
     struct FontData;
 }
 
-class Font
+class Font : public Resource
 {
 public:
-    static Result<Font *, ReimuError> create();
-
     ~Font();
+
+    static Result<Font *, ReimuError> create(File &file);
+
+    StringID obj_type_id() const override;
+    
+    static consteval StringID type_id() {
+        return "font"_hashid;
+    }
 
     void *get_handle();
 

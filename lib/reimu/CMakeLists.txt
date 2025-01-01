@@ -8,6 +8,7 @@ add_library(reimu SHARED
     event.cpp
     lib.cpp
     unicode.cpp
+    resource_manager.cpp
 )
 
 target_include_directories(reimu PUBLIC
@@ -21,6 +22,10 @@ target_compile_options(freetype PUBLIC
 target_link_libraries(reimu
     freetype
     webgpu
+)
+
+target_include_directories(reimu PRIVATE
+    ${CMAKE_SOURCE_DIR}/thirdparty/freetype/include
 )
 
 if (WAYLAND)
