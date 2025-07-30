@@ -13,7 +13,7 @@ WGPUTextureFormat convert_color_format(ColorFormat fmt) {
     logger::fatal("Unsupported color format");
 }
 
-WGPUShaderStageFlags convert_shader_stage(ShaderStage stage) {
+WGPUShaderStage convert_shader_stage(ShaderStage stage) {
     switch (stage) {
     case ShaderStage::Vertex:
         return WGPUShaderStage_Vertex;

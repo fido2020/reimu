@@ -54,7 +54,7 @@ void WebGPUTexture::replace(ColorFormat fmt, const Vector2i &size) {
 }
 
 void WebGPUTexture::update(const void *data, size_t size) {
-    WGPUImageCopyTexture image_copy_texture = {};
+    WGPUTexelCopyTextureInfo image_copy_texture = {};
     image_copy_texture.texture = m_texture;
     image_copy_texture.mipLevel = 0;
     // Offset in the texture
@@ -63,7 +63,7 @@ void WebGPUTexture::update(const void *data, size_t size) {
 
     auto stride = get_color_format_info(m_format).bytes_per_pixel * m_size.x;
 
-    WGPUTextureDataLayout source_layout = {};
+    WGPUTexelCopyBufferLayout source_layout = {};
     source_layout.offset = 0;
     source_layout.bytesPerRow = stride;
     source_layout.rowsPerImage = m_size.y;

@@ -266,6 +266,8 @@ void WindowsDriver::finish() {
 reimu::video::Driver *win32_init() {
     reimu::logger::debug("win32: Initializing driver");
 
+    SetProcessDPIAware();
+
     auto *d = new WindowsDriver;
 
     auto h_instance = GetModuleHandle(nullptr);

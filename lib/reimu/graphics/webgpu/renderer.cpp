@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <vector>
+#include <webgpu.h>
 
 #include "texture.h"
 #include "webgpu.h"
@@ -61,20 +62,20 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
     }
     renderer->m_adapter = adapter;
 
-    std::vector<WGPUFeatureName> adapter_features;
-    size_t num_features = wgpuAdapterEnumerateFeatures(adapter, nullptr);
+    WGPUSupportedFeatures adapter_features;
 
-    adapter_features.resize(num_features);
-    wgpuAdapterEnumerateFeatures(adapter, adapter_features.data());
+    wgpuAdapterGetFeatures(adapter, &adapter_features);
 
-    for (auto feature : adapter_features) {
-        logger::debug("Adapter feature: {:x}", (uint64_t)feature);
+    for (size_t i = 0; i < adapter_features.featureCount; i++) {
+        logger::debug("Adapter feature: {:x}", (uint64_t)adapter_features.features[i]);
     }
 
+    wgpuSupportedFeaturesFreeMembers(adapter_features);
+
     WGPUDeviceDescriptor device_desc = {};
-    device_desc.label = "reimu";
+    device_desc.label = webgpu::to_sv("reimu");
     // Required features or limits can go here
-    device_desc.defaultQueue.label = "queue";
+    device_desc.defaultQueue.label = webgpu::to_sv("queue");
 
     WGPUDevice device = create_device(adapter, device_desc);
     if (!device) {
@@ -85,8 +86,11 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
     }
     renderer->m_device = device;
 
-    renderer->m_error_callback = [](WGPUErrorType type, const char *message, void *) {
-        logger::fatal("WebGPU device error ({:x}): {}", (uint64_t)type, message);
+    renderer->m_error_callback = [](
+        WGPUDevice const *, WGPUErrorType type, WGPUStringView message, void *, void *
+    ) {
+        std::string_view sv = {message.data, message.length};
+        logger::fatal("WebGPU device error ({:x}): {}", (uint64_t)type, sv);
     };
     
     //wgpuDeviceSetUncapturedErrorCallback(device, renderer->m_error_callback, nullptr);
@@ -101,10 +105,18 @@ WebGPURenderer *WebGPURenderer::create(video::Window *window) {
 
     renderer->m_cmd_queue = queue;
 
-    renderer->m_queue_callback = [](WGPUQueueWorkDoneStatus status, void *) {
-        logger::debug("Queue work done status: {}", (uint64_t)status);
+    renderer->m_queue_callback = [](WGPUQueueWorkDoneStatus status, void*, void*) -> void {
+        logger::debug("Queue work done, status: {:x}", (uint32_t)status);
     };
-    wgpuQueueOnSubmittedWorkDone(queue, renderer->m_queue_callback, nullptr);
+
+    WGPUQueueWorkDoneCallbackInfo info = {
+        .nextInChain = nullptr,
+        .mode = WGPUCallbackMode_WaitAnyOnly,
+        .callback = renderer->m_queue_callback,
+        .userdata1 = NULL,
+        .userdata2 = NULL
+    };
+    wgpuQueueOnSubmittedWorkDone(queue, info);
 
     // Create a swap chain
     if(renderer->create_swap_chain().is_err()) {
@@ -198,7 +210,7 @@ void WebGPURenderer::render() {
 
     WGPUTextureViewDescriptor viewDescriptor;
     viewDescriptor.nextInChain = nullptr;
-    viewDescriptor.label = "Surface texture view";
+    viewDescriptor.label = webgpu::to_sv("Surface texture view");
     viewDescriptor.format = wgpuTextureGetFormat(surface_texture.texture);
     viewDescriptor.dimension = WGPUTextureViewDimension_2D;
     viewDescriptor.baseMipLevel = 0;
@@ -206,6 +218,7 @@ void WebGPURenderer::render() {
     viewDescriptor.baseArrayLayer = 0;
     viewDescriptor.arrayLayerCount = 1;
     viewDescriptor.aspect = WGPUTextureAspect_All;
+    viewDescriptor.usage = WGPUTextureUsage_RenderAttachment;
 
     auto texture_view = wgpuTextureCreateView(surface_texture.texture, &viewDescriptor);
     if (!texture_view) {
@@ -215,7 +228,7 @@ void WebGPURenderer::render() {
 
     for (auto &pass : m_render_passes) {
         WGPUCommandEncoderDescriptor encoder_desc = {};
-        encoder_desc.label = "command encoder";
+        encoder_desc.label = webgpu::to_sv("command encoder");
 
         WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(m_device, &encoder_desc);
         assert(encoder);
@@ -223,7 +236,7 @@ void WebGPURenderer::render() {
         pass->render(texture_view, encoder);
 
         WGPUCommandBufferDescriptor cmd_buffer_desc{};
-        cmd_buffer_desc.label = "command buffer";
+        cmd_buffer_desc.label = webgpu::to_sv("command buffer");
 
         WGPUCommandBuffer cmd_buffer = wgpuCommandEncoderFinish(encoder, &cmd_buffer_desc);
         assert(cmd_buffer);
@@ -240,13 +253,13 @@ void WebGPURenderer::render() {
 }
 
 Result<void, ReimuError> WebGPURenderer::load_shader(const std::string &name, const char *data) {
-    WGPUShaderModuleWGSLDescriptor wgsl_desc = {};
+    WGPUShaderSourceWGSL wgsl_desc = {};
     wgsl_desc.chain = {
         .next = nullptr,
-        .sType = WGPUSType_ShaderModuleWGSLDescriptor,
+        .sType = WGPUSType_ShaderSourceWGSL,
     };
 
-    wgsl_desc.code = data;
+    wgsl_desc.code = {data, strlen(data)};
     
     WGPUShaderModuleDescriptor shader_desc = {};
     shader_desc.nextInChain = &wgsl_desc.chain;
@@ -337,12 +350,12 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
       
     // Create the pipeline
     WGPURenderPipelineDescriptor pipeline_desc = {};
-    pipeline_desc.label = "render pipeline";
+    pipeline_desc.label = webgpu::to_sv("render pipeline");
     
     pipeline_desc.vertex = {
         .nextInChain = nullptr,
         .module = shader_module,
-        .entryPoint = "vertex_main",
+        .entryPoint = webgpu::to_sv("vertex_main"),
         .constantCount = 0,
         .constants = nullptr,
         .bufferCount = 0,
@@ -373,7 +386,7 @@ Result<RenderPass *, ReimuError> WebGPURenderer::create_render_pass(const Bindin
 
     WGPUFragmentState fragment_state = {};
     fragment_state.module = shader_module;
-    fragment_state.entryPoint = "fragment_main";
+    fragment_state.entryPoint = webgpu::to_sv("fragment_main");
     fragment_state.constantCount = 0;
     fragment_state.constants = nullptr;
 
@@ -413,8 +426,8 @@ ColorFormat WebGPURenderer::display_surface_color_format() const {
     return ColorFormat::RGBA8;
 }
 
-void WebGPURenderer::write_texture(const WGPUImageCopyTexture &destination, void const *data,
-        size_t dataSize, const WGPUTextureDataLayout &dataLayout, const WGPUExtent3D &writeSize) {
+void WebGPURenderer::write_texture(const WGPUTexelCopyTextureInfo &destination, void const *data,
+        size_t dataSize, const WGPUTexelCopyBufferLayout &dataLayout, const WGPUExtent3D &writeSize) {
     wgpuQueueWriteTexture(m_cmd_queue, &destination, data, dataSize, &dataLayout, &writeSize);
 }
 
@@ -481,29 +494,29 @@ Result<WGPUSurface, ReimuError> WebGPURenderer::create_bind_window_surface(WGPUI
     // Create a WebGPU surface based on the window backend
     switch (win_handle->type) {
     case video::NativeHandleType::Wayland: {
-        WGPUSurfaceDescriptorFromWaylandSurface wayland_desc = {};
+        WGPUSurfaceSourceWaylandSurface wayland_desc = {};
         wayland_desc.chain.next = nullptr;
-        wayland_desc.chain.sType = WGPUSType_SurfaceDescriptorFromWaylandSurface;
+        wayland_desc.chain.sType = WGPUSType_SurfaceSourceWaylandSurface;
 
         wayland_desc.display = win_handle->wayland.display;
         wayland_desc.surface = win_handle->wayland.surface;
 
         WGPUSurfaceDescriptor surface_desc;
         surface_desc.nextInChain = &wayland_desc.chain;
-        surface_desc.label = NULL;
+        surface_desc.label = {NULL, 0};
 
         return wgpuInstanceCreateSurface(instance, &surface_desc);
     } case video::NativeHandleType::Win32: {
-        WGPUSurfaceDescriptorFromWindowsHWND win32_desc = {};
+        WGPUSurfaceSourceWindowsHWND win32_desc = {};
         win32_desc.chain.next = nullptr;
-        win32_desc.chain.sType = WGPUSType_SurfaceDescriptorFromWindowsHWND;
+        win32_desc.chain.sType = WGPUSType_SurfaceSourceWindowsHWND;
 
         win32_desc.hinstance = win_handle->win32.hinstance;
         win32_desc.hwnd = win_handle->win32.hwnd;
 
         WGPUSurfaceDescriptor surface_desc;
         surface_desc.nextInChain = &win32_desc.chain;
-        surface_desc.label = NULL;
+        surface_desc.label = {NULL, 0};
 
         return wgpuInstanceCreateSurface(instance, &surface_desc);
     }
@@ -518,17 +531,26 @@ WGPUAdapter WebGPURenderer::create_adapter(WGPUInstance instance, const WGPURequ
         bool completed = false;
     } adapter_request;
 
+    const auto adapter_cb = [](WGPURequestAdapterStatus s, WGPUAdapterImpl *a, WGPUStringView, void *data, void *) {
+        auto *request = (AdapterRequest *)data;
+
+        if (s == WGPURequestAdapterStatus_Success) {
+            request->adapter = a;
+        }
+
+        request->completed = true;
+    };
+
+    WGPURequestAdapterCallbackInfo cb = {
+        .nextInChain = nullptr,
+        .mode = WGPUCallbackMode_WaitAnyOnly,
+        .callback = adapter_cb,
+        .userdata1 = &adapter_request,
+        .userdata2 = nullptr,
+    };
+
     // Request an adapter using a lambda for the callback
-    wgpuInstanceRequestAdapter(instance, &adapter_options,
-        [](WGPURequestAdapterStatus s, WGPUAdapter a, char const *, void *data) {
-            auto *request = (AdapterRequest *)data;
-
-            if (s == WGPURequestAdapterStatus_Success) {
-                request->adapter = a;
-            }
-
-            request->completed = true;
-        }, &adapter_request);
+    wgpuInstanceRequestAdapter(instance, &adapter_options, cb);
 
     assert(adapter_request.completed);
 
@@ -541,8 +563,12 @@ WGPUDevice WebGPURenderer::create_device(WGPUAdapter adapter, const WGPUDeviceDe
         bool completed = false;
     } request;
     
-    wgpuAdapterRequestDevice(adapter, &device_desc, [](WGPURequestDeviceStatus s, WGPUDevice d, 
-        char const *, void *data) -> void {
+    WGPURequestDeviceCallbackInfo device_cb = {
+        .nextInChain = nullptr,
+        .mode = WGPUCallbackMode_WaitAnyOnly,
+        .callback = [](
+            WGPURequestDeviceStatus s, WGPUDevice d, WGPUStringView, void *data, void *
+        ) -> void {
             auto *request = (Request *)data;
 
             if (s == WGPURequestDeviceStatus_Success) {
@@ -550,7 +576,12 @@ WGPUDevice WebGPURenderer::create_device(WGPUAdapter adapter, const WGPUDeviceDe
             }
 
             request->completed = true;
-        }, &request);
+        },
+        .userdata1 = &request,
+        .userdata2 = nullptr,
+    };
+
+    wgpuAdapterRequestDevice(adapter, &device_desc, device_cb);
 
     assert(request.completed);
 

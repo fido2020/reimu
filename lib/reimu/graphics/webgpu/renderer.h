@@ -5,6 +5,7 @@
 
 #include <map>
 #include <set>
+#include <webgpu.h>
 
 #include "render_pass.h"
 #include "webgpu.h"
@@ -28,8 +29,8 @@ public:
     ColorFormat display_surface_color_format() const override;
     
     void on_destroy_render_pass(RenderPass *render_pass);
-    void write_texture(const WGPUImageCopyTexture &destination, void const *data, size_t dataSize,
-        const WGPUTextureDataLayout &dataLayout, const WGPUExtent3D &writeSize);
+    void write_texture(const WGPUTexelCopyTextureInfo &destination, void const *data, size_t dataSize,
+        const WGPUTexelCopyBufferLayout &dataLayout, const WGPUExtent3D &writeSize);
 
     WGPUTexture create_texture_obj(const WGPUTextureDescriptor &desc);
     WGPUBindGroup create_bind_group(const WGPUBindGroupDescriptor &desc);
@@ -59,8 +60,8 @@ private:
 
     WGPUQueue m_cmd_queue = nullptr;
 
-    WGPUErrorCallback m_error_callback;
-    WGPUQueueOnSubmittedWorkDoneCallback m_queue_callback;
+    WGPUUncapturedErrorCallback m_error_callback;
+    WGPUQueueWorkDoneCallback m_queue_callback;
 };
 
 } 
