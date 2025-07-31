@@ -1,8 +1,10 @@
+#include <cstdint>
 #include <reimu/graphics/text.h>
 
 #include <cassert>
 
 #include "freetype.h"
+#include "freetype/freetype.h"
 
 FreeType* FreeType::m_instance = new FreeType();
 
@@ -103,16 +105,18 @@ void Text::render(Surface &dest, const Rectf &bounds) {
         }
 
         if (use_kerning && prev_glyph) {
-            x_pos += kerning.x >> 6; // Offset the x position for kerning
-            
             FT_Get_Kerning(face, prev_glyph, glyph, FT_KERNING_DEFAULT, &kerning);
+            x_pos += kerning.x >> 6; // Offset the x position for kerning
         }
 
-        if (FT_Load_Glyph(face, glyph, FT_LOAD_NO_BITMAP)) {
+        // TODO: settings to tweak whether to enable font smoothing
+        constexpr bool font_smoothing = false;
+
+        if (FT_Load_Glyph(face, glyph, font_smoothing ? FT_LOAD_NO_BITMAP : FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME)) {
             continue;
         }
 
-        if (FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL)) {
+        if (FT_Render_Glyph(face->glyph, font_smoothing ? FT_RENDER_MODE_NORMAL : FT_RENDER_MODE_MONO)) {
             continue;
         }
 
@@ -132,29 +136,30 @@ void Text::render(Surface &dest, const Rectf &bounds) {
         int x_max = std::min((int)slot->bitmap.width, final_bounds.z - x_pos);
 
         // Copy the glyph into the texture
-        for (int y = 0; y < slot->bitmap.rows && y_offset < final_bounds.w; y++, y_offset++) {
-            if (y_offset + y < 0) {
+        for (unsigned y = 0; y < slot->bitmap.rows && y_offset < final_bounds.w; y++, y_offset++) {
+            if (y_offset + (int)y < 0) {
                 continue;
             }
             
             auto *dst = surface_buffer + y_offset * surface_size.x + x_pos + x_off;
+
             uint8_t *src = (uint8_t*)slot->bitmap.buffer + y * slot->bitmap.pitch;
 
             Color c = m_color;
             for (int x = x_min; x < x_max; x++) {
-                uint8_t v = src[x];
-                
-                if (v) {
+                if (font_smoothing && src[x]) {
                     // Copy the pixel into the surface buffer
-                    c.a = v;
+                    c.a = src[x];
 
                     dst[x] = (Color(dst[x]) * c).value;
+                } else if (src[x >> 3] & (1 << (7 - (x & 7)))) {
+                    dst[x] = c.value;
                 }
             }
         }
 
         // Advance the x position
-        x_pos += face->glyph->metrics.horiAdvance >> 6;
+        x_pos += slot->advance.x >> 6;
         prev_glyph = glyph;
     }
 }

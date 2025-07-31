@@ -720,7 +720,7 @@ private:
     os_handle_t m_pty_in;
     os_handle_t m_pty_handle;
 
-    pid_t m_child_pid;
+    int m_child_pid;
 
     std::unique_ptr<EventLoop> m_event_loop;
 
