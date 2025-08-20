@@ -9,6 +9,9 @@ add_library(reimu SHARED
     lib.cpp
     unicode.cpp
     resource_manager.cpp
+
+    config/config.cpp
+    config/provider.cpp
 )
 
 target_include_directories(reimu PUBLIC
@@ -22,6 +25,7 @@ target_compile_options(freetype PUBLIC
 target_link_libraries(reimu
     freetype
     webgpu
+    nlohmann_json
 )
 
 target_include_directories(reimu PRIVATE

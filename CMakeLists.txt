@@ -1,5 +1,8 @@
 project(reimu)
 
+enable_testing()
+enable_language(CXX)
+
 add_compile_options($<$<C_COMPILER_ID:Clang>:-fcolor-diagnostics>)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -14,6 +17,7 @@ endif()
 
 add_subdirectory(thirdparty/freetype)
 add_subdirectory(thirdparty/webgpu)
+add_subdirectory(thirdparty/json)
 
 add_subdirectory(lib/reimu)
 add_subdirectory(guitest)
