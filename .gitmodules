@@ -4,6 +4,9 @@
 [submodule "thirdparty/webgpu"]
 	path = thirdparty/webgpu
 	url = git@github.com:eliemichel/WebGPU-distribution.git
+[submodule "thirdparty/miniaudio"]
+	path = thirdparty/miniaudio
+	url = git@github.com:mackron/miniaudio.git
 [submodule "thirdparty/json"]
 	path = thirdparty/json
 	url = git@github.com:nlohmann/json.git

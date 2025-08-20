@@ -18,10 +18,12 @@ endif()
 add_subdirectory(thirdparty/freetype)
 add_subdirectory(thirdparty/webgpu)
 add_subdirectory(thirdparty/json)
+add_subdirectory(thirdparty/miniaudio)
 
 add_subdirectory(lib/reimu)
 add_subdirectory(guitest)
 add_subdirectory(terminal)
+add_subdirectory(player)
 
 if (UNIX)
     add_subdirectory(servers/wm)

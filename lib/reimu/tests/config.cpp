@@ -1,7 +1,6 @@
 #include <reimu/config/config.h>
 
 #include <cassert>
-#include <print>
 
 int main() {
     std::string json_config = R"({
