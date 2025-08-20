@@ -114,7 +114,7 @@ struct LayoutProperties {
 
     LayoutPositioning position = LayoutPositioning::Auto;
 
-    inline void set_padding(const Size &sz) {
+    inline constexpr void set_padding(const Size &sz) {
         left_padding = sz;
         right_padding = sz;
         top_padding = sz;

@@ -6,13 +6,28 @@
 #include <reimu/video/video.h>
 #include <memory>
 
+#include "controls.h"
+
+class FakeAudioControlProvider : public AudioControlProvider {
+    void play() override {}
+    void pause() override {}
+    void stop() override {}
+    void seek(float position) override {}
+    void set_volume(float volume) override {}
+
+    bool is_playing() const override { return false; }
+    bool is_paused() const override { return false; }
+
+    float volume() const override { return 1.0f; }
+
+    long track_progress_ms() const override { return 42069; }
+    long track_duration_ms() const override { return 60000; }
+};
+
+FakeAudioControlProvider control_provider;
+
 template<typename T, typename E>
 using Result = reimu::Result<T, E>;
-
-const auto control_btn_layout = reimu::gui::LayoutProperties{
-    .width = reimu::gui::Size::from_em(2.5f),
-    .height = reimu::gui::Size::from_em(2.5f)
-};
 
 class MediaPlayerApp {
 public:
@@ -28,25 +43,12 @@ public:
     }
 
     void run() {
-        auto btn_play = std::make_unique<reimu::gui::Button>();
-        btn_play->layout = control_btn_layout;
+        auto control_box = std::make_unique<PlayerControls>(
+            static_cast<AudioControlProvider&>(control_provider)
+        );
 
-        auto btn_prev = std::make_unique<reimu::gui::Button>();
-        btn_prev->layout = control_btn_layout;
-
-        auto btn_next = std::make_unique<reimu::gui::Button>();
-        btn_next->layout = control_btn_layout;
-
-        auto btn_shuffle = std::make_unique<reimu::gui::Button>();
-        btn_shuffle->layout = control_btn_layout;
-
-        auto control_box = std::make_unique<reimu::gui::FlowBox>();
-        control_box->layout.layout_direction = reimu::gui::LayoutDirection::Horizontal;
-
-        control_box->add_child(btn_play.get());
-        control_box->add_child(btn_prev.get());
-        control_box->add_child(btn_next.get());
-        control_box->add_child(btn_shuffle.get());
+        control_box->layout.width = reimu::gui::Size::from_percent(1);
+        control_box->layout.height = reimu::gui::Size::from_percent(1);
 
         m_main_window->root().add_child(control_box.get());
 

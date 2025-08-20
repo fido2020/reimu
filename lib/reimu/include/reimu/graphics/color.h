@@ -20,6 +20,10 @@ union ColorRGBA8 final {
 	inline constexpr ColorRGBA8(uint8_t _r, uint8_t _g, uint8_t _b) : r(_r), g(_g), b(_b), a(0xff) {}
 	inline constexpr ColorRGBA8(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a) : r(_r), g(_g), b(_b), a(_a) {}
 
+	inline static consteval ColorRGBA8 from_rgb_hex(uint32_t hex) {
+		return ColorRGBA8((hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff, 0xff);
+	}
+
 	inline constexpr Vector4i as_8bit() const {
 		return { r, g, b, a };
 	}
@@ -30,12 +34,12 @@ union ColorRGBA8 final {
 
 	inline constexpr ColorRGBA8 operator*(const ColorRGBA8 &other) const {
 		// Upcast to uint16_t
-		uint16_t alpha = other.a;
-		uint16_t one_minus = 255 - alpha;
+		const uint16_t alpha = other.a;
+		const uint16_t one_minus = 255 - alpha;
 
 		// Split up red-blue, alpha-green
-		uint32_t rb = (value & 0x00ff00ff) * one_minus + (other.value & 0x00ff00ff) * alpha;
-		uint32_t ag = ((value & 0xff00ff00) >> 8) * one_minus + ((other.value & 0xff00ff00) >> 8) * alpha;
+		const uint32_t rb = (value & 0x00ff00ff) * one_minus + (other.value & 0x00ff00ff) * alpha;
+		const uint32_t ag = ((value & 0xff00ff00) >> 8) * one_minus + ((other.value & 0xff00ff00) >> 8) * alpha;
 
 		return ((rb & 0xff00ff00) >> 8) | ((ag & 0xff00ff00));
 	}

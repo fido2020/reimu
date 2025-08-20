@@ -1,3 +1,4 @@
+#include "reimu/gui/style.h"
 #include <reimu/gui/widget.h>
 
 #include <reimu/core/logger.h>
@@ -81,6 +82,19 @@ void Widget::create_texture_if_needed(CreateTextureFn fn) {
         }
 
         m_surface = std::make_unique<graphics::Surface>(fn(tex_size));
+    }
+}
+
+Canvas::Canvas() {}
+Canvas::~Canvas() {}
+
+void Canvas::repaint(UIPainter &painter) {
+    Widget::repaint(painter);
+
+    if (on_paint) {
+        graphics::Painter p{*m_surface};
+
+        on_paint(p);
     }
 }
 

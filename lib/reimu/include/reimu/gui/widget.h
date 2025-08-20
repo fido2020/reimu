@@ -1,5 +1,6 @@
 #pragma once
 
+#include "reimu/graphics/painter.h"
 #include <reimu/core/event.h>
 #include <reimu/graphics/renderer.h>
 #include <reimu/graphics/surface.h>
@@ -62,6 +63,17 @@ protected:
     class Window *m_window = nullptr;
 
     std::unique_ptr<graphics::Surface> m_surface = nullptr;
+};
+
+class Canvas : public Widget {
+    // Directly exposes the 2d drawing context
+public:
+    Canvas();
+    ~Canvas() override;
+
+    void repaint(UIPainter &painter) override;
+    
+    std::function<void(graphics::Painter &)> on_paint;
 };
 
 class Box : public Widget {

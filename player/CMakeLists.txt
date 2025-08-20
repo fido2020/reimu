@@ -2,6 +2,8 @@ find_package(PkgConfig)
 
 add_executable(reimu-player
     main.cpp
+
+    controls.cpp
 )
 
 target_link_libraries(reimu-player PUBLIC
