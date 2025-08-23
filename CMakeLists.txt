@@ -16,6 +16,7 @@ else()
 endif()
 
 add_subdirectory(thirdparty/freetype)
+add_subdirectory(thirdparty/miniaudio)
 add_subdirectory(thirdparty/webgpu)
 add_subdirectory(thirdparty/json)
 
