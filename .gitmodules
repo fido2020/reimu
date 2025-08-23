@@ -10,3 +10,9 @@
 [submodule "thirdparty/json"]
 	path = thirdparty/json
 	url = git@github.com:nlohmann/json.git
+[submodule "thirdparty/FFmpeg"]
+	path = thirdparty/FFmpeg
+	url = git@github.com:FFmpeg/FFmpeg.git
+[submodule "thirdparty/vcpkg"]
+	path = thirdparty/vcpkg
+	url = https://github.com/microsoft/vcpkg.git

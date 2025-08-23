@@ -6,11 +6,21 @@ TRIPLE=x86_64-w64-mingw32
 
 mingw_prefix=/usr/$TRIPLE
 
+#PATH=${mingw_prefix}/bin:$PATH cmake \
+#    -DCMAKE_INSTALL_PREFIX:PATH=${mingw_prefix} \
+#    -DCMAKE_INSTALL_LIBDIR:PATH=lib \
+#    -DCMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES:PATH=${mingw_prefix}/include \
+#    -DCMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES:PATH=${mingw_prefix}/include \
+#    -DBUILD_SHARED_LIBS:BOOL=ON \
+#    -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$SCRIPT_DIR/x86_64-w64-mingw32.cmake \
+#    -DCMAKE_TOOLCHAIN_FILE=$SCRIPT_DIR/../thirdparty/vcpkg/scripts/buildsystems/vcpkg.cmake \
+#    -DVCPKG_TARGET_TRIPLET=x64-mingw-dynamic \
+#    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+#    "$@"
+
 PATH=${mingw_prefix}/bin:$PATH cmake \
-    -DCMAKE_INSTALL_PREFIX:PATH=${mingw_prefix} \
-    -DCMAKE_INSTALL_LIBDIR:PATH=lib \
-    -DCMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES:PATH=${mingw_prefix}/include \
-    -DCMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES:PATH=${mingw_prefix}/include \
-    -DBUILD_SHARED_LIBS:BOOL=ON \
-    -DCMAKE_TOOLCHAIN_FILE=$SCRIPT_DIR/$TRIPLE.cmake \
+    -DVCPKG_TARGET_TRIPLET=x64-mingw-dynamic \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DCMAKE_TOOLCHAIN_FILE=$SCRIPT_DIR/../thirdparty/vcpkg/scripts/buildsystems/vcpkg.cmake \
+    -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$SCRIPT_DIR/x86_64-w64-mingw32.cmake \
     "$@"
