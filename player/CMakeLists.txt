@@ -3,6 +3,7 @@ find_package(PkgConfig)
 add_executable(reimu-player
     main.cpp
     device.cpp
+    decoder.cpp
     controls.cpp
 )
 

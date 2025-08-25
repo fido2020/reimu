@@ -41,7 +41,7 @@ reimu::Result<size_t, reimu::OSError> os_pty_read(os_handle_t handle, void *buff
         return ERR(reimu::OSError{errno});
     }
 
-    return OK(ret);
+    return OK((size_t)ret);
 }
 
 reimu::Result<int, reimu::OSError> os_create_process_pty(const char *path, char *const argv[], int pty,
@@ -639,7 +639,7 @@ public:
                 m_terminal_widget->set_fg_color(params[2]);
             } else if (params.size() == 6 && params[1] == 2) {
                 // Set 24-bit color
-                m_terminal_widget->set_fg_color({params[3], params[4], params[5], 255});
+                m_terminal_widget->set_fg_color({(uint8_t)params[3], (uint8_t)params[4], (uint8_t)params[5], 255});
             }
             break;
         case 39:
@@ -653,7 +653,7 @@ public:
                 m_terminal_widget->set_bg_color(params[2]);
             } else if (params.size() == 6 && params[1] == 2) {
                 // Set 24-bit color
-                m_terminal_widget->set_bg_color({params[3], params[4], params[5], 255});
+                m_terminal_widget->set_bg_color({(uint8_t)params[3], (uint8_t)params[4], (uint8_t)params[5], 255});
             }
             break;
         case 49:

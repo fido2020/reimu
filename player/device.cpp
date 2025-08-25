@@ -1,3 +1,4 @@
+#include <condition_variable>
 #include <pthread.h>
 #include <reimu/core/logger.h>
 #include <reimu/core/result.h>
@@ -38,6 +39,7 @@ struct AudioContext::AudioContextImpl {
     int sample_rate = 0;
 
     std::mutex queue_mutex;
+    std::condition_variable producer_cv;
 };
 
 static reimu::Optional<AudioSampleFormat> convert_sample_fmt(ma_format f);
@@ -176,14 +178,16 @@ void AudioContext::stop_playback() {
 }
 
 void AudioContext::queue_frames(const void *data, uint32_t num_frames) {
-    reimu::logger::debug("Queueing {} frames to audio device", num_frames);
-
     if (num_frames > m_data->max_frames_in_buffer) {
         reimu::logger::warn("Trying to queue too many frames, truncating to max buffer size");
         num_frames = m_data->max_frames_in_buffer;
     }
 
-    std::lock_guard<std::mutex> lock(m_data->queue_mutex);
+    std::unique_lock<std::mutex> lock{m_data->queue_mutex};
+    m_data->producer_cv.wait(lock, [this, num_frames]() {
+        auto frames_in_buffer = (m_data->producer_head - m_data->consumer_head + m_data->max_frames_in_buffer) % m_data->max_frames_in_buffer;
+        return frames_in_buffer + num_frames < m_data->max_frames_in_buffer;
+    });
     
     while (num_frames > 0) {
         size_t frames_to_copy;
@@ -275,12 +279,13 @@ static void audio_playback_callback(ma_device* pDevice, void* pOutput, const voi
 
     std::lock_guard<std::mutex> lock(impl->queue_mutex);
 
-    auto frames_in_buffer = (impl->producer_head - impl->consumer_head + impl->max_frames_in_buffer) % impl->max_frames_in_buffer;
+    auto frames_in_buffer = (impl->max_frames_in_buffer + impl->producer_head - impl->consumer_head) % impl->max_frames_in_buffer;
     
     // Lets not give the user a bad time if we don't have data to play :p
     memset(pOutput, 0, frameCount * impl->frame_sz);
 
     if (frames_in_buffer == 0) {
+        impl->producer_cv.notify_all();
         return;
     }
 
@@ -300,4 +305,6 @@ static void audio_playback_callback(ma_device* pDevice, void* pOutput, const voi
         frames_in_buffer -= frames_to_copy;
         frameCount -= frames_to_copy;
     }
+    
+    impl->producer_cv.notify_all();
 }

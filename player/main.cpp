@@ -5,10 +5,12 @@
 #include "reimu/gui/widget.h"
 #include <reimu/gui/window.h>
 #include <reimu/video/video.h>
+#include <reimu/os/fs.h>
 #include <memory>
 
 #include "controls.h"
 #include "device.h"
+#include "decoder.h"
 
 class FakeAudioControlProvider : public AudioControlProvider {
     void play() override {}
@@ -73,10 +75,18 @@ int main() {
     reimu::logger::debug("Using default audio device: {}", dev->name());
 
     auto ctx = dev->connect({
-        AudioSampleFormat::Float32,
+        AudioSampleFormat::Signed16,
         48000,
         2
     }).ensure();
+
+    auto fmt = ctx->get_sample_format();
+
+    auto decode = Decoder{fmt};
+
+    decode.on_decoded_data = [ctx](const uint8_t *data, size_t samples_per_channel) {
+        ctx->queue_frames(data, samples_per_channel);
+    };
 
     reimu::logger::debug("Connected to audio device with format: {} Hz, {} channels, {}", 
         ctx->get_sample_format().sample_rate, 
@@ -84,16 +94,11 @@ int main() {
         (int)ctx->get_sample_format().sample_format);
 
     ctx->start_playback();
+    decode.load(
+        reimu::os::open("test.wav", reimu::FileMode::ReadOnly).ensure()
+    ).ensure();
 
-    // A note (440hz) sine wave, 2 channels, normalized -1 to 1
-    char sine[48000 * 4];
-    for (size_t i = 0; i < sizeof(sine); i += 8) {
-        float sample = sinf(2.0f * M_PI * (i / 8.0f) / 48000.0f * 440.0f);
-        memcpy(sine + i, &sample, sizeof(float));
-        memcpy(sine + i + 4, &sample, sizeof(float));
-    }
-
-    ctx->queue_frames(sine, sizeof(sine) / 8);
+    decode.start();
 
     MediaPlayerApp app;
     app.run();
