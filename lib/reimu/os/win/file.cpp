@@ -21,9 +21,7 @@ public:
 
         data.resize(up_to);
 
-        logger::debug("read: offset: {}, ftell: {}, size: {}", m_off, ftell(m_fd), up_to);
         auto result = ::fread(data.data(), 1, up_to, m_fd);
-        logger::debug("Read {}/{} bytes from file (ftell {})", result, up_to, ftell(m_fd));
         if (ferror(m_fd)) {
             return ERR(ReimuError::IOError);
         }
@@ -100,7 +98,6 @@ public:
         seek(off, SeekMode::Absolute).ensure();
 
         m_off = off;
-        logger::debug("offset: {}, ftell: {}, size: {}", off, ftell(m_fd), sz);
 
         return sz;
     }
