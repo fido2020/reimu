@@ -39,11 +39,26 @@ public:
 
         m_off += result;
 
-        return OK(result);
+        return OK((size_t)result);
     }
 
-    Result<void, ReimuError> seek(size_t offset) override {
-        auto result = lseek(m_fd, offset, SEEK_SET);
+    Result<void, ReimuError> seek(ssize_t offset, SeekMode mode) override {
+        int whence;
+        switch (mode) {
+        case SeekMode::Absolute:
+            whence = SEEK_SET;
+            break;
+        case SeekMode::Relative:
+            whence = SEEK_CUR;
+            break;
+        case SeekMode::End:
+            whence = SEEK_END;
+            break;
+        default:
+            __builtin_unreachable();
+        }
+
+        auto result = lseek(m_fd, offset, whence);
         if (result < 0) {
             return ERR(ReimuError::IOError);
         }
@@ -75,7 +90,7 @@ public:
 
         auto sz = m_off;
 
-        seek(off).ensure();
+        seek(off, SeekMode::Absolute).ensure();
 
         m_off = off;
 

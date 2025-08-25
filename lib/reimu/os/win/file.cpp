@@ -49,8 +49,23 @@ public:
         return OK(result);
     }
 
-    Result<void, ReimuError> seek(size_t offset) override {
-        auto result = fseek(m_fd, offset, SEEK_SET);
+    Result<void, ReimuError> seek(ssize_t offset, SeekMode mode) override {
+        int whence;
+        switch (mode) {
+        case SeekMode::Absolute:
+            whence = SEEK_SET;
+            break;
+        case SeekMode::Relative:
+            whence = SEEK_CUR;
+            break;
+        case SeekMode::End:
+            whence = SEEK_END;
+            break;
+        default:
+            __builtin_unreachable();
+        }
+
+        auto result = fseek(m_fd, offset, whence);
         if (result < 0) {
             return ERR(ReimuError::IOError);
         }
@@ -82,12 +97,16 @@ public:
 
         auto sz = m_off;
 
-        seek(off).ensure();
+        seek(off, SeekMode::Absolute).ensure();
 
         m_off = off;
         logger::debug("offset: {}, ftell: {}, size: {}", off, ftell(m_fd), sz);
 
         return sz;
+    }
+
+    bool is_eof() const override {
+        return feof(m_fd);
     }
     
 private:
@@ -113,7 +132,8 @@ Result<std::unique_ptr<File>, reimu::OSError> open(const std::string &path, File
 
     auto fd = ::fopen(path.c_str(), mode_str);
     if (fd == nullptr) {
-        return ERR(errno);
+        auto e = OSError(errno, path);
+        return ERR(std::move(e));
     }
 
     auto file = std::make_unique<Win32File>(fd, mode);

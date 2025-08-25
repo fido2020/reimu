@@ -55,7 +55,7 @@ reimu::Result<size_t, reimu::OSError> write(os_handle_t handle, const void *buff
         return ERR(reimu::OSError{errno});
     }
 
-    return OK(ret);
+    return OK((size_t)ret);
 }
 
 reimu::Result<void, reimu::OSError> close(os_handle_t handle) {

@@ -18,13 +18,13 @@ namespace detail {
 template<typename T>
 class Optional {
 public:
-    Optional() : m_has_some{false} {}
+    constexpr Optional() : m_has_some{false} {}
 
-    Optional(T data)
+    constexpr Optional(T data)
         : m_data{std::move(data)}, m_has_some{true} {}
 
-    Optional(const detail::NoneTag &tag)
-        : m_has_some{false} {}
+    constexpr Optional(const detail::NoneTag &tag)
+        : m_has_some{false} {(void) tag;}
 
     ~Optional() {
         if (m_has_some) {
@@ -32,7 +32,7 @@ public:
         }
     }
 
-    inline bool has_some() const {
+    constexpr inline bool has_some() const {
         return m_has_some;
     }
 
