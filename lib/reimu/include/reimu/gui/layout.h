@@ -121,6 +121,14 @@ struct LayoutProperties {
         bottom_padding = sz;
     }
 
+    inline constexpr void set_x_padding(const Size &sz) {
+        left_padding = right_padding = sz;
+    }
+
+    inline constexpr void set_y_padding(const Size &sz) {
+        top_padding = bottom_padding = sz;
+    }
+
     void calculate_layout(CalculatedLayout &out, const CalculatedLayout *parent);
 };
 

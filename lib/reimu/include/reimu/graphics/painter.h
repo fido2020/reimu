@@ -21,6 +21,7 @@ public:
     }
 
     Painter &draw_rect(const Rectf &rect, const Color &color);
+    Painter &clear_rect(const Rectf &rect);
 
     /**
      * @brief Draw a rectangle with a gradient

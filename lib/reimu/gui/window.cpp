@@ -63,6 +63,7 @@ void Window::render() {
 
 void Window::set_size(const Vector2i &size) {
     m_raw_window->set_size(size);
+    m_root->signal_layout_changed();
 }
 
 void Window::set_title(const std::string &title) {

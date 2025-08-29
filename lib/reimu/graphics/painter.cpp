@@ -41,6 +41,31 @@ Painter &Painter::draw_rect(const Rectf &rect, const Color &color) {
     return *this;
 }
 
+Painter &Painter::clear_rect(const Rectf &rect) {
+    Recti clipped_rect = get_visible_rect(m_surface, rect);
+
+    if (clipped_rect.width() <= 0 || clipped_rect.height() <= 0) {
+        return *this;
+    }
+
+    // Clear the rectangle by filling it with transparent color
+    uint32_t stride = m_surface.stride();
+    uint8_t *buffer = m_surface.buffer() + clipped_rect.y * stride + clipped_rect.x * 4;
+
+    size_t rows = clipped_rect.height();
+    size_t pixels_per_row = clipped_rect.width();
+
+    while (rows--) {
+        for (uint32_t i = 0; i < pixels_per_row; i++) {
+            reinterpret_cast<uint32_t*>(buffer)[i] = 0; // Transparent
+        }
+
+        buffer += stride;
+    }
+
+    return *this;
+}
+
 Painter &Painter::draw_rect_gradient(const Rectf &rect, const Color &c1, const Color &c2,
         const Vector2f &p1, const Vector2f &p2) {
     Recti clipped_rect = get_visible_rect(m_surface, rect);

@@ -1,4 +1,5 @@
 #include <reimu/gui/widget.h>
+#include <cfloat>
 
 namespace reimu::gui {
 
@@ -6,6 +7,7 @@ void Label::repaint(UIPainter &painter) {
     Widget::repaint(painter);
     
     graphics::Painter p{ *m_surface };
+    p.clear_rect({0, 0, (float)m_surface->size().x, (float)m_surface->size().y});
 
     painter.begin(p);
 
