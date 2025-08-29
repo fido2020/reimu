@@ -21,6 +21,10 @@ public:
             return ERR(ReimuError::IOError);
         }
 
+        if ((size_t)result < up_to) {
+            m_eof = true;
+        }
+
         data.resize(result);
         m_off += result;
 
@@ -63,6 +67,21 @@ public:
             return ERR(ReimuError::IOError);
         }
 
+        // Check for EOF condition
+        switch (mode) {
+        case SeekMode::Absolute:
+            m_eof = result < offset;
+            break;
+        case SeekMode::Relative:
+            m_eof = result < (ssize_t)m_off + offset;
+            break;
+        case SeekMode::End:
+            m_eof = offset >= 0;
+            break;
+        default:
+            __builtin_unreachable();
+        }
+
         m_off = result;
 
         return OK();
@@ -96,10 +115,15 @@ public:
 
         return sz;
     }
+
+    bool is_eof() const override {
+        return m_eof;
+    }
     
 private:
     int m_fd;
     FileMode m_mode;
+    bool m_eof = false;
 
     size_t m_off = 0;
 };

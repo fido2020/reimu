@@ -12,10 +12,13 @@ namespace reimu {
 
 class WindowsEventLoop : public EventLoop {
 public:
-    WindowsEventLoop() {}
+    WindowsEventLoop() {
+        m_event_handle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+        m_handles.push_back(m_event_handle);
+    }
 
     ~WindowsEventLoop() {
-
+        CloseHandle(m_event_handle);
     }
 
     Result<void, OSError> watch_os_handle(os_handle_t fd, EventCallback cb) override {
@@ -57,6 +60,21 @@ public:
                 if (cb != m_callbacks.end()) {
                     (*cb->second)();
                 }
+            } else if (m_handles[result - WAIT_OBJECT_0] == m_event_handle) {
+                // We have an event in our event queue
+                std::queue<StringID> events;
+
+                {
+                    std::lock_guard<std::mutex> lock(m_event_queue_mutex);
+                    std::swap(events, m_event_queue);
+                }
+
+                while (!events.empty()) {
+                    auto event = events.front();
+                    events.pop();
+
+                    EventDispatcher::dispatch_event(event);
+                }
             } else {
                 // We have an event
                 auto cb = m_callbacks.find(m_handles[result - WAIT_OBJECT_0]);
@@ -79,6 +97,12 @@ public:
     void end() override {
         m_has_ended = true;
     }
+
+    void wake_up_loop() override {
+        SetEvent(m_event_handle);
+    }
+
+    HANDLE m_event_handle;
 
     bool m_has_ended = false;
     std::vector<HANDLE> m_handles;

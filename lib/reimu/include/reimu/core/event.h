@@ -10,6 +10,7 @@
 #include <functional>
 #include <queue>
 #include <map>
+#include <mutex>
 
 namespace reimu {
 
@@ -18,14 +19,17 @@ using EventCallback = std::function<void()>;
 class EventDispatcher {
 public:
     void bind_event_callback(StringID event_id, EventCallback callback);
-    void dispatch_event(StringID event_name);
+    void bind_to_event(StringID event_id, EventDispatcher &other, StringID sub_event);
+    virtual void dispatch_event(StringID event_name);
 
 private:
     std::map<StringID, EventCallback> m_event_callbacks;
 };
 
-class EventLoop {
+class EventLoop : public EventDispatcher {
 public:
+    virtual ~EventLoop() = default;
+
     static Result<EventLoop *, OSError> create();
 
     /**
@@ -37,6 +41,13 @@ public:
      * @brief Stop watching an OS handle for events.
     */
     virtual void unwatch_os_handle(os_handle_t fd) = 0;
+
+    /**
+      @brief Queue an event to be dispatched.
+
+      Thread-safe.
+    */
+    virtual void dispatch_event(StringID event_name) override;
 
     /**
      * @brief Indefinitely polls and dispatches events.
@@ -69,6 +80,11 @@ protected:
             return time_due > other.time_due;
         }
     };
+
+    virtual void wake_up_loop() = 0;
+
+    std::mutex m_event_queue_mutex;
+    std::queue<StringID> m_event_queue;
 
     std::vector<Timer> m_timers;
     std::priority_queue<Timer, std::vector<Timer>, std::greater<Timer>> m_timer_queue;
