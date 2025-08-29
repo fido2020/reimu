@@ -16,6 +16,8 @@ public:
 
     void set_size(const reimu::Vector2i &size) override {
         SetWindowPos(handle, nullptr, 0, 0, size.x, size.y, SWP_NOMOVE | SWP_NOZORDER);
+
+        Window::set_size(size);
     }
 
     void set_title(const std::string &title) override {
