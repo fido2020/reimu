@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <thread>
+#include <mutex>
 
 #include "device.h"
 #include "reimu/core/error.h"
@@ -35,12 +36,23 @@ public:
 
     void start();
     void stop();
+    void seek(float sec);
+
+    bool has_pending_seek() {
+        std::lock_guard lock{m_seek_mutex};
+        return m_has_pending_seek;
+    }
 
     void set_audio_output_fmt(AudioFormat fmt);
 
-    std::function<void(const uint8_t *data, size_t samples_per_channel)> on_decoded_data;
+    long track_duration_us() const;
+
+    std::function<
+        void(const uint8_t *data, size_t samples_per_channel, long timestamp_us, bool invalidate_buffer)
+    > on_decoded_data;
 
 private:
+    void do_seek(float sec);
     void init_audio_resampler();
     void decode_frame(struct AVFrame *frame, const uint8_t *sample_buf, int sample_buf_size);
 
@@ -52,6 +64,9 @@ private:
     int m_audio_stream_index = -1;
 
     std::shared_ptr<reimu::File> m_file;
+    float m_seek_position;
+    bool m_has_pending_seek = false;
+    std::mutex m_seek_mutex;
 
     std::mutex m_decoder_mutex;
     std::thread m_decoder_thread;

@@ -1,8 +1,10 @@
 #include "decoder.h"
 #include "libavutil/channel_layout.h"
+#include "libavutil/rational.h"
 #include "reimu/core/file.h"
 #include "reimu/core/logger.h"
 #include <memory>
+#include <mutex>
 
 extern "C" {
 
@@ -77,6 +79,15 @@ void Decoder::set_audio_output_fmt(AudioFormat fmt) {
     if (m_data->avcodec_ctx) {
         init_audio_resampler();
     }
+}
+
+long Decoder::track_duration_us() const {
+    if (m_av_fmt_ctx && m_av_fmt_ctx->duration != AV_NOPTS_VALUE) {
+        static_assert(AV_TIME_BASE == 1000000);
+        return m_av_fmt_ctx->duration;
+    }
+    
+    return 0;
 }
 
 reimu::Result<void, Decoder::DecoderError> Decoder::load(std::shared_ptr<reimu::File> file) {
@@ -223,7 +234,6 @@ void Decoder::start() {
                 ret = avcodec_receive_frame(m_data->avcodec_ctx, frame);
                 if (ret == AVERROR_EOF || ret == AVERROR(EAGAIN)) {
                     // Get the next packet and retry
-                    reimu::logger::warn("retry");
                     break;
                 } else if (ret) {
                     reimu::logger::warn("Could not decode frame: {}", ret);
@@ -233,9 +243,20 @@ void Decoder::start() {
                 decode_frame(frame, sample_buf.get(), resample_buffer_size);
 
                 av_frame_unref(frame);
+
+                std::lock_guard lock{m_seek_mutex};
+                if (m_has_pending_seek) {
+                    break;
+                }
             }
 
             av_packet_unref(packet);
+
+            std::lock_guard lock{m_seek_mutex};
+            if (m_has_pending_seek) {
+                m_has_pending_seek = false;
+                do_seek(m_seek_position);
+            }
         }
 
         m_decoder_running.store(false);
@@ -255,6 +276,40 @@ void Decoder::stop() {
     if (m_decoder_thread.joinable()) {
         m_decoder_thread.join();
     }
+}
+
+void Decoder::seek(float sec) {
+    std::lock_guard lock{m_seek_mutex};
+
+    if (!m_decoder_running.load()) {
+        do_seek(sec);
+    } else {
+        m_seek_position = sec;
+        m_has_pending_seek = true;
+    }
+}
+
+void Decoder::do_seek(float sec) {
+    if (!m_av_fmt_ctx || m_audio_stream_index < 0) {
+        return;
+    }
+
+    int64_t timestamp = sec * AV_TIME_BASE;
+    reimu::logger::debug("Seeking to {} (timestamp {})", sec, timestamp);
+    if (av_seek_frame(m_av_fmt_ctx, -1, timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
+        reimu::logger::warn("Failed to seek to {}", sec);
+        return;
+    }
+
+    if (m_data->avcodec_ctx) {
+        avcodec_flush_buffers(m_data->avcodec_ctx);
+    }
+
+    if (m_data->audio_resampler) {
+        swr_convert(m_data->audio_resampler, nullptr, 0, nullptr, 0);
+    }
+
+    on_decoded_data(nullptr, 0, 0, true);
 }
 
 void Decoder::init_audio_resampler() {
@@ -308,15 +363,6 @@ void Decoder::init_audio_resampler() {
         reimu::logger::fatal("Failed to initialize audio resampler");
     }
 
-    reimu::logger::debug("Initialized audio resampler: {} Hz, {}, {} channels -> {} Hz, {}, {} channels",
-        avcodec->sample_rate,
-        av_get_sample_fmt_name(avcodec->sample_fmt),
-        avcodec->ch_layout.nb_channels,
-        m_audio_format.sample_rate,
-        av_get_sample_fmt_name(out_sample_fmt),
-        out_ch_layout.nb_channels
-    );
-
     if (swr_init(m_data->audio_resampler) < 0) {
         reimu::logger::fatal("Failed to initialize audio resampler");
     }
@@ -328,9 +374,7 @@ void Decoder::decode_frame(struct AVFrame *frame, const uint8_t *sample_buf, int
         return;
     }
 
-    float time_sec = (float)frame->pts * av_q2d(m_data->avcodec_ctx->time_base);
     float frame_len_sec = (float)frame->nb_samples / frame->sample_rate;
-    reimu::logger::debug("timestamp: {}, len: {}", time_sec, frame_len_sec);
 
     int samples_to_write = av_rescale_rnd(
         swr_get_delay(m_data->audio_resampler, frame->sample_rate) + frame->nb_samples,
@@ -342,10 +386,6 @@ void Decoder::decode_frame(struct AVFrame *frame, const uint8_t *sample_buf, int
         / m_audio_format.sample_size()
         / m_audio_format.channels;
 
-    reimu::logger::debug("Resampling {} samples to {} samples", frame->nb_samples, samples_to_write);
-    reimu::logger::debug("Input: {} Hz, {}, {} channels", frame->sample_rate, av_get_sample_fmt_name((AVSampleFormat)frame->format), frame->ch_layout.nb_channels);
-    reimu::logger::debug("Output buffer holds {} samples", buffer_size_samples);
-
     int ret;
     if((ret = swr_convert(
         m_data->audio_resampler,
@@ -354,17 +394,14 @@ void Decoder::decode_frame(struct AVFrame *frame, const uint8_t *sample_buf, int
         (const uint8_t **)frame->extended_data,
         frame->nb_samples)) > 0) {
 
-        // dump frame->extended_data
-        for (int i = 0; i < ret * 4; i += 4) {
-            int16_t v = *(int16_t*)(sample_buf + i);
-            //if (v!=0)
-            //reimu::logger::debug("{} ", v);
-        }
-
         if (on_decoded_data) {
+            long timestamp_us = frame->pts * (av_q2d(m_data->avcodec_ctx->time_base) * 1000000);
+
             on_decoded_data(
                 (uint8_t*)sample_buf,
-                ret
+                ret,
+                timestamp_us,
+                false
             );
         }
     }

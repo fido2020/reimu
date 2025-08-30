@@ -1,8 +1,8 @@
 #include <condition_variable>
-#include <pthread.h>
 #include <reimu/core/logger.h>
 #include <reimu/core/result.h>
 
+#include <array>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -18,7 +18,7 @@
 static std::vector<std::shared_ptr<AudioDevice>> audio_devices;
 static std::shared_ptr<AudioDevice> _default_audio_device;
 static ma_context context;
-static constexpr size_t audio_buffer_size = 0x100000;
+static constexpr size_t audio_buffer_size = 0x1000;
 
 struct AudioDevice::AudioDeviceImpl {
     ma_device_info info;
@@ -177,6 +177,18 @@ void AudioContext::stop_playback() {
     }
 }
 
+bool AudioContext::is_playing() const {
+    return ma_device_is_started(&m_data->device);
+}
+
+void AudioContext::clear_queue() {
+    std::unique_lock<std::mutex> lock{m_data->queue_mutex};
+
+    m_data->producer_head = m_data->consumer_head = 0;
+
+    m_data->producer_cv.notify_all();
+}
+
 void AudioContext::queue_frames(const void *data, uint32_t num_frames) {
     if (num_frames > m_data->max_frames_in_buffer) {
         reimu::logger::warn("Trying to queue too many frames, truncating to max buffer size");
@@ -210,6 +222,16 @@ void AudioContext::queue_frames(const void *data, uint32_t num_frames) {
     }
 }
 
+long AudioContext::get_current_timestamp(long reference_us) const {
+    std::lock_guard<std::mutex> lock{m_data->queue_mutex};
+
+    auto frames_in_buffer = (m_data->producer_head - m_data->consumer_head + m_data->max_frames_in_buffer) % m_data->max_frames_in_buffer;
+
+    long timestamp_us = reference_us - (frames_in_buffer * 1000000 / m_data->sample_rate);
+
+    return timestamp_us;
+}
+
 reimu::Optional<std::shared_ptr<AudioDevice>> default_audio_device() {
     return _default_audio_device;
 }
@@ -229,7 +251,7 @@ void register_devices() {
 
         reimu::logger::debug("Audio device {} supports {} formats", pInfo->name, pInfo->nativeDataFormatCount);
 
-        ((typeof(&devices))pUserData)->push_back(*pInfo);
+        ((decltype(&devices))pUserData)->push_back(*pInfo);
         
         return MA_TRUE;
     };

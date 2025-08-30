@@ -45,7 +45,12 @@ public:
     void start_playback();
     void stop_playback();
 
+    bool is_playing() const;
+
+    void clear_queue();
     void queue_frames(const void *data, uint32_t num_frames);
+
+    long get_current_timestamp(long reference_us) const;
 
     AudioFormat get_sample_format() const;
 

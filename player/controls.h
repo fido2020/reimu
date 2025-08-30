@@ -1,5 +1,6 @@
 #pragma once
 
+#include "reimu/gui/style.h"
 #include <memory>
 #include <reimu/gui/widget.h>
 
@@ -16,22 +17,25 @@ public:
 
     virtual float volume() const = 0;
 
-    virtual long track_progress_ms() const = 0;
-    virtual long track_duration_ms() const = 0;
+    virtual long track_progress_us() const = 0;
+    virtual long track_duration_us() const = 0;
 };
 
 class PlayerControls : public reimu::gui::FlowBox {
 public:
     PlayerControls(AudioControlProvider &provider);
 
+    void repaint(reimu::gui::UIPainter &p) override;
+
 private:
     AudioControlProvider &m_provider;
 
-    std::unique_ptr<reimu::gui::Canvas> m_duration;
+    std::unique_ptr<reimu::gui::Label> m_duration;
+    std::unique_ptr<reimu::gui::Canvas> m_progress;
 
     std::unique_ptr<reimu::gui::GridBox> m_play_controls_box;
 
-    std::unique_ptr<reimu::gui::Widget> m_play_button;
+    std::unique_ptr<reimu::gui::Button> m_play_button;
     std::unique_ptr<reimu::gui::Widget> m_stop_button;
     std::unique_ptr<reimu::gui::Widget> m_back_button;
     std::unique_ptr<reimu::gui::Widget> m_fwd_button;
