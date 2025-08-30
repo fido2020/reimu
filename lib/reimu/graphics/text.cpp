@@ -110,9 +110,9 @@ void Text::render(Surface &dest, const Rectf &bounds) {
         }
 
         // TODO: settings to tweak whether to enable font smoothing
-        constexpr bool font_smoothing = false;
+        constexpr bool font_smoothing = true;
 
-        if (FT_Load_Glyph(face, glyph, font_smoothing ? FT_LOAD_NO_BITMAP : FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME)) {
+        if (FT_Load_Glyph(face, glyph, font_smoothing ? 0 : FT_LOAD_NO_HINTING | FT_LOAD_MONOCHROME)) {
             continue;
         }
 

@@ -18,9 +18,22 @@ mingw_prefix=/usr/$TRIPLE
 #    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 #    "$@"
 
-PATH=${mingw_prefix}/bin:$PATH cmake \
-    -DVCPKG_TARGET_TRIPLET=x64-mingw-dynamic \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -DCMAKE_TOOLCHAIN_FILE=$SCRIPT_DIR/../thirdparty/vcpkg/scripts/buildsystems/vcpkg.cmake \
-    -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$SCRIPT_DIR/x86_64-w64-mingw32.cmake \
-    "$@"
+if [ "$BUILD_STATIC" ]; then
+    PATH=${mingw_prefix}/bin:$PATH cmake \
+        -DVCPKG_TARGET_TRIPLET=x64-mingw-static \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_TOOLCHAIN_FILE=$SCRIPT_DIR/../thirdparty/vcpkg/scripts/buildsystems/vcpkg.cmake \
+        -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$SCRIPT_DIR/x86_64-w64-mingw32.cmake \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DWEBGPU_LINK_TYPE=STATIC \
+        -DCMAKE_CXX_FLAGS=-fno-rtti \
+        -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++ -static"\
+        "$@"
+else
+    PATH=${mingw_prefix}/bin:$PATH cmake \
+        -DVCPKG_TARGET_TRIPLET=x64-mingw-dynamic \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_TOOLCHAIN_FILE=$SCRIPT_DIR/../thirdparty/vcpkg/scripts/buildsystems/vcpkg.cmake \
+        -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$SCRIPT_DIR/x86_64-w64-mingw32.cmake \
+        "$@"
+fi

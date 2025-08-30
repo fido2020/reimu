@@ -1,0 +1,1 @@
+cmake .. -D CMAKE_TOOLCHAIN_FILE=..\thirdparty\vcpkg\scripts\buildsystems\vcpkg.cmake -D VCPKG_TARGET_TRIPLET=x64-windows-static -D CMAKE_C_COMPILER=clang -D CMAKE_CXX_COMPILER=clang -D CMAKE_LINKER=lld-link -G Ninja

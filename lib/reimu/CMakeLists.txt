@@ -4,7 +4,9 @@ add_compile_options(-Wall -Wextra -fno-exceptions)
 
 find_package(PkgConfig)
 
-add_library(reimu SHARED
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+
+add_library(reimu
     event.cpp
     lib.cpp
     unicode.cpp
@@ -18,9 +20,16 @@ target_include_directories(reimu PUBLIC
     include
 )
 
-target_compile_options(freetype PUBLIC
-    -fPIC
-)
+if (WINDOWS)
+else()
+    add_compile_options(
+        -Wextra
+    )
+
+    target_compile_options(freetype PUBLIC
+        -fPIC
+    )
+endif()
 
 target_link_libraries(reimu
     freetype

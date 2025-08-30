@@ -5,6 +5,12 @@
 
 #include <assert.h>
 
+#ifdef REIMU_WIN32
+constexpr const char *default_font_path = "C:\\Windows\\Fonts\\tahoma.ttf";
+#else
+constexpr const char *default_font_path = "font.ttf";
+#endif
+
 namespace reimu::gui {
 
 UIPainter::UIPainter() {}
@@ -27,7 +33,8 @@ DefaultUIPainter::DefaultUIPainter(ResourceManager &rm) : m_res_mgr(rm) {
     if (fon.has_some()) {
         m_text.set_font(Resource::as<graphics::Font>(fon.ensure()).ensure());
     } else {
-        auto fon = m_res_mgr.load_from_file<graphics::Font>("font.ttf", "font_default"_hashid).ensure();
+        auto fon = m_res_mgr.load_from_file<graphics::Font>(default_font_path, "font_default"_hashid)
+            .ensure(std::format("Failed to load default font '{}'", default_font_path));
 
         m_text.set_font(std::move(fon));
     }
@@ -81,7 +88,7 @@ void DefaultUIPainter::draw_frame(const std::string &title, bool is_active) {
     painter.draw_rect_gradient(titlebar_rect, c1, c2, {0.f, 0.f}, {titlebar_rect.width(), 500.f});
 
     m_text.set_text(to_utf32(title).ensure());
-    m_text.set_font_size_px(16);
+    m_text.set_font_size_px(15);
     m_text.set_color(Color(255, 255, 255));
     m_text.render(painter.surface(), {
         titlebar_rect.x + 2,

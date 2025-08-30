@@ -29,6 +29,8 @@ void Button::repaint(UIPainter &painter) {
 
     graphics::Painter p{ *m_surface };
 
+    p.clear_rect({0, 0, (float)m_surface->size().x, (float)m_surface->size().y});
+
     painter.begin(p);
 
     painter.draw_button(label, is_pressed);

@@ -12,5 +12,3 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
 set (CMAKE_RC_COMPILER x86_64-w64-mingw32-windres)
 set (CMAKE_MC_COMPILER x86_64-w64-mingw32-windmc)
-
-set (VCPKG_TARGET_TRIPLET x64-mingw-dynamic)

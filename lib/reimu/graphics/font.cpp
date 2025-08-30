@@ -2,8 +2,6 @@
 
 #include <reimu/core/resource_manager.h>
 
-#define FIXED_FONT_PATH "font.ttf"
-
 #include "freetype.h"
 
 namespace reimu::graphics {

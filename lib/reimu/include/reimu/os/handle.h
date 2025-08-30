@@ -4,6 +4,8 @@
 
 #if defined(REIMU_WIN32)
 
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
 
 typedef HANDLE os_handle_t;

@@ -2,6 +2,8 @@
 
 #include <reimu/graphics/vector.h>
 
+#include <algorithm>
+
 namespace reimu {
 
 template <typename T>

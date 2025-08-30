@@ -4,6 +4,7 @@
 #include <reimu/core/logger.h>
 
 #include <utility>
+#include <string_view>
 
 namespace reimu {
 
@@ -38,6 +39,14 @@ public:
     inline T &&ensure() {
         if (m_is_err) {
             logger::fatal("Unexpected error value: {}", m_err.as_string());
+        }
+
+        return move_val();
+    }
+
+    inline T &&ensure(std::string_view msg) {
+        if (m_is_err) {
+            logger::fatal("{}: {}", msg, m_err.as_string());
         }
 
         return move_val();

@@ -118,11 +118,11 @@ reimu::Result<os_handle_t, reimu::OSError> os_open_pty(os_handle_t &master_in, o
     sa.bInheritHandle = TRUE;
 
     if (!CreatePipe(&master_read, &slave_write, &sa, 0)) {
-        return ERR(reimu::OSError{GetLastError()});
+        return ERR(reimu::OSError{(int)GetLastError()});
     }
 
     if (!CreatePipe(&slave_read, &master_write, &sa, 0)) {
-        return ERR(reimu::OSError{GetLastError()});
+        return ERR(reimu::OSError{(int)GetLastError()});
     }
 
     master_in = master_read;
@@ -135,7 +135,7 @@ reimu::Result<os_handle_t, reimu::OSError> os_open_pty(os_handle_t &master_in, o
     HPCON hpcon;
 
     if (CreatePseudoConsole({80, 25}, slave_read, slave_write, 0, &hpcon) != S_OK) {
-        return ERR(reimu::OSError{GetLastError()});
+        return ERR(reimu::OSError{(int)GetLastError()});
     }
 
     SetConsoleMode(master_write, ENABLE_VIRTUAL_TERMINAL_INPUT);
@@ -150,7 +150,7 @@ reimu::Result<size_t, reimu::OSError> os_pty_read(os_handle_t handle, void *buff
     // Get available data in the PTY
     DWORD available;
     if (!PeekNamedPipe(handle, nullptr, 0, nullptr, &available, nullptr)) {
-        return ERR(reimu::OSError{GetLastError()});
+        return ERR(reimu::OSError{(int)GetLastError()});
     }
 
     size = std::min(size, (size_t)available);
@@ -160,7 +160,7 @@ reimu::Result<size_t, reimu::OSError> os_pty_read(os_handle_t handle, void *buff
 
     DWORD read;
     if (!ReadFile(handle, buffer, size, &read, nullptr)) {
-        return ERR(reimu::OSError{GetLastError()});
+        return ERR(reimu::OSError{(int)GetLastError()});
     }
 
     return OK(read);
@@ -180,24 +180,24 @@ reimu::Result<int, reimu::OSError> os_create_process_pty(const char *path, char 
 
     if (!InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0,
             &size)) {
-        return ERR(reimu::OSError{GetLastError()});
+        return ERR(reimu::OSError{(int)GetLastError()});
     }
 
     // Attach the PTY to the new process
     if (!UpdateProcThreadAttribute(si.lpAttributeList, 0,
             PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hpcon, sizeof(HPCON), nullptr, nullptr)) {
-        return ERR(reimu::OSError{GetLastError()});
+        return ERR(reimu::OSError{(int)GetLastError()});
     }
 
     PROCESS_INFORMATION pi = {0};
 
     if (!CreateProcess(path, nullptr, nullptr, nullptr, FALSE, EXTENDED_STARTUPINFO_PRESENT, nullptr, nullptr, &si.StartupInfo, &pi)) {
-        return ERR(reimu::OSError{GetLastError()});
+        return ERR(reimu::OSError{(int)GetLastError()});
     }
 
     DeleteProcThreadAttributeList(si.lpAttributeList);
 
-    return OK(pi.dwProcessId);
+    return OK((int)pi.dwProcessId);
 }
 
 void os_pty_set_size(os_handle_t handle, int cols, int rows) {

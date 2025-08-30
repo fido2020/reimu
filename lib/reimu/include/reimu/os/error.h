@@ -9,6 +9,8 @@
 
 namespace reimu {
 
+std::string platform_err_to_str(int err_no);
+
 struct OSError : public ErrorBase {
     OSError(int e)
         : err_no(e) {}
@@ -17,11 +19,13 @@ struct OSError : public ErrorBase {
         : err_no(e), detail(std::move(detail)) {}
 
     std::string as_string() const override {
+        auto error_str = platform_err_to_str(err_no);
+
         if (!detail.empty()) {
-            return std::format("OSError ({}) \"{}\": {}", err_no, detail, strerror(err_no));
+            return std::format("OSError ({}) \"{}\": {}", err_no, detail, error_str);
         }
 
-        return std::format("OSError ({}): {}", err_no, strerror(err_no));
+        return std::format("OSError ({}): {}", err_no, error_str);
     }
 
     int err_no;

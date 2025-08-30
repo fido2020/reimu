@@ -17,8 +17,12 @@ endif()
 
 add_subdirectory(thirdparty/freetype)
 add_subdirectory(thirdparty/miniaudio)
-add_subdirectory(thirdparty/webgpu)
 add_subdirectory(thirdparty/json)
+
+# Make sure the MSVC ABI is used for WebGPU
+set(MSVC TRUE CACHE BOOL "Pretend MSVC for webgpu")
+add_subdirectory(thirdparty/webgpu)
+unset(MSVC CACHE)
 
 add_subdirectory(lib/reimu)
 add_subdirectory(guitest)

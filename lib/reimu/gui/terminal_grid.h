@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdint.h>
 
+#include <algorithm>
 #include <vector>
 
 namespace reimu::term {
@@ -150,7 +151,7 @@ public:
 
     template<typename DrawCellFn>
     void paint(DrawCellFn &draw_cell_fn) {
-        assert(m_num_visible_rows <= m_cells.size());
+        assert(m_num_visible_rows <= (int)m_cells.size());
 
         for (int i = 0; i < m_cells.size(); i++) {
             for (int j = 0; j < m_row_size; j++) {

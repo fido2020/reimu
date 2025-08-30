@@ -4,6 +4,8 @@
 
 #include <fcntl.h>
 
+#include <codecvt>
+
 namespace reimu::os {
 
 class Win32File : public File {
@@ -114,20 +116,23 @@ private:
 };
 
 Result<std::unique_ptr<File>, reimu::OSError> open(const std::string &path, FileMode mode) {
-    const char *mode_str;
+    const wchar_t *mode_str;
 
     switch(mode) {
     case FileMode::ReadOnly:
-        mode_str = "rb";
+        mode_str = L"rb";
         break;
     case FileMode::ReadWrite:
-        mode_str = "wb+";
+        mode_str = L"wb+";
         break;
     default:
         return ERR(EINVAL);
     }
 
-    auto fd = ::fopen(path.c_str(), mode_str);
+    // Convert utf8 path to wide string
+    std::wstring wpath = std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes(path);
+
+    auto fd = _wfopen(wpath.c_str(), mode_str);
     if (fd == nullptr) {
         auto e = OSError(errno, path);
         return ERR(std::move(e));

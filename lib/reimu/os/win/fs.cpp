@@ -18,7 +18,7 @@ reimu::Result<std::string, reimu::OSError> default_shell_path() {
 reimu::Result<size_t, reimu::OSError> write(os_handle_t handle, const void *buffer, size_t size) {
     DWORD written;
     if (!WriteFile(handle, buffer, size, &written, nullptr)) {
-        return ERR(reimu::OSError{GetLastError()});
+        return ERR(reimu::OSError{(int)GetLastError()});
     }
 
     return OK(written);
@@ -26,7 +26,7 @@ reimu::Result<size_t, reimu::OSError> write(os_handle_t handle, const void *buff
 
 reimu::Result<void, reimu::OSError> close(os_handle_t handle) {
     if (!CloseHandle(handle)) {
-        return ERR(reimu::OSError{GetLastError()});
+        return ERR(reimu::OSError{(int)GetLastError()});
     }
 
     return OK();
