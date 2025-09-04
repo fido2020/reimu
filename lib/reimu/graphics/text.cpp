@@ -147,7 +147,10 @@ void Text::render(Surface &dest, const Rectf &bounds) {
 
             Color c = m_color;
             for (int x = x_min; x < x_max; x++) {
-                if (font_smoothing && src[x]) {
+                if constexpr(font_smoothing) {
+                    if (!src[x])
+                        continue;
+
                     // Copy the pixel into the surface buffer
                     c.a = src[x];
 

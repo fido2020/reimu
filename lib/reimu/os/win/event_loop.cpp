@@ -49,17 +49,23 @@ public:
         MSG win_msg;
         DWORD result;
 
+        auto n_count = m_handles.size();
         while (!m_has_ended 
-            && (result = MsgWaitForMultipleObjects(m_handles.size(), m_handles.data(), false, INFINITE, QS_ALLINPUT))
+            && (result = MsgWaitForMultipleObjects(n_count, m_handles.data(), false, INFINITE, QS_ALLINPUT))
                 != WAIT_FAILED) {
-            if (result == WAIT_OBJECT_0 + m_handles.size()) {
+            if (result == WAIT_OBJECT_0 + n_count) {
                 // We have a message in the win32 message loop
-                
+                while (PeekMessage(&win_msg, NULL, 0, 0, PM_REMOVE) > 0) {
+                    TranslateMessage(&win_msg);
+                    DispatchMessage(&win_msg);
+                }
+       
                 // We have a special callback id for the win32 message loop
                 auto cb = m_callbacks.find(WIN32_MESSAGE_LOOP);
                 if (cb != m_callbacks.end()) {
                     (*cb->second)();
                 }
+
             } else if (m_handles[result - WAIT_OBJECT_0] == m_event_handle) {
                 // We have an event in our event queue
                 std::queue<StringID> events;
@@ -82,6 +88,8 @@ public:
                     (*cb->second)();
                 }
             }
+
+            n_count = m_handles.size();
         }
 
         if (result == WAIT_FAILED) {

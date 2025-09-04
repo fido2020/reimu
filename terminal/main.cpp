@@ -1,3 +1,4 @@
+#include <cstdio>
 #define NTDDI_VERSION 0x0A000006
 #define _WIN32_WINNT 0x0A00
 
@@ -242,7 +243,7 @@ public:
         auto font_or_err = res_mgr->load_from_file<graphics::Font>("monospace.ttf", "font_terminal"_hashid);
         if (font_or_err.is_err()) {
             gui::message_box("Error", "Failed to load font", gui::MessageBoxButtons::ok());
-            throw std::runtime_error("Failed to load font");
+            logger::fatal("Failed to load font");
         }
 
         auto font = font_or_err.ensure();
@@ -309,6 +310,8 @@ public:
                     if (killpg(pgid, SIGINT) < 0) {
                         logger::warn("Failed to send SIGINT to process group: {}", strerror(errno));
                     }
+#else
+                    // how to do this on windows? idk
 #endif
                 } else {
                     os::write(m_pty_out, &ev.key.key, 1);
@@ -317,11 +320,15 @@ public:
             case 0:
                 break;
             default:
-                if (isprint(ev.key.key)) {
+                if (ev.key.key < 128 && isprint(ev.key.key)) {
                     os::write(m_pty_out, &ev.key.key, 1);
                 }
                 break;
             }
+
+#ifdef REIMU_WINDOWS
+            FlushFileBuffers(m_pty_out);
+#endif
         });
 
         m_terminal_widget = std::unique_ptr<gui::TerminalWidget>{ terminal_widget };
@@ -362,7 +369,7 @@ public:
                 continue;
             }
 
-            if (isprint(*it)) {
+            if (isprint((uint8_t)(*it))) {
                 m_terminal_widget->put_char(*it);
             } else if ((*it) & 0x80) {
                 size_t consumed;

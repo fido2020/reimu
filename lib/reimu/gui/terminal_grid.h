@@ -135,7 +135,7 @@ public:
             m_cells.resize(y);
         }
 
-        for (int i = 0; i < y; i++) {
+        for (int i = 0; i < m_cells.size(); i++) {
             // TODO: wrap lines here instead of cutting stuff off
             m_cells[i].resize(x);
         }

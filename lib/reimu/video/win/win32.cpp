@@ -1,5 +1,6 @@
 #include "driver.h"
 
+#include "reimu/core/logger.h"
 #include "window.h"
 
 #include <windows.h>
@@ -107,8 +108,8 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param
         break;
     } case WM_PAINT: {
         win->render();
-        break;
-        
+
+        return DefWindowProc(hwnd, msg, w_param, l_param);
     } case WM_LBUTTONDOWN: {
         reimu::video::MouseEvent event;
 
@@ -204,14 +205,14 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM w_param, LPARAM l_param
             .type = reimu::video::InputEvent::Keyboard,
             .key = event
         });
+
+        break;
     }
+    default:
+        return DefWindowProc(hwnd, msg, w_param, l_param);
     }
 
-    if (win && win->has_event()) {
-        win->dispatch_event("wm_input"_hashid);
-    }
-
-    return DefWindowProc(hwnd, msg, w_param, l_param);
+    return 0;
 }
 
 reimu::video::Window *WindowsDriver::window_create(const reimu::Vector2i &size) {
@@ -219,7 +220,7 @@ reimu::video::Window *WindowsDriver::window_create(const reimu::Vector2i &size) 
 
     auto h_instance = GetModuleHandle(nullptr);
 
-    auto *win = new Win32Window(size);
+    auto *win = new Win32Window(this, size);
 
     int x = (GetSystemMetrics(SM_CXSCREEN) - size.x) / 2;
     int y = (GetSystemMetrics(SM_CYSCREEN) - size.y) / 2;
@@ -238,6 +239,8 @@ reimu::video::Window *WindowsDriver::window_create(const reimu::Vector2i &size) 
     ShowWindow(hwnd, SW_SHOW);
     UpdateWindow(hwnd);
 
+    m_windows.insert(win);
+
     return win;
 }
 
@@ -248,10 +251,10 @@ os_handle_t WindowsDriver::get_window_client_handle() {
 }
 
 void WindowsDriver::window_client_dispatch() {
-    MSG msg;
-    while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) > 0) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+    for (auto *win : m_windows) {
+        if (win->has_event()) {
+            win->dispatch_event("wm_input"_hashid);
+        }
     }
 }
 

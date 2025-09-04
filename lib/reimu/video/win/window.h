@@ -1,17 +1,21 @@
 #pragma once
 
+#include "driver.h"
 #include <reimu/video/window.h>
 
 #include <windows.h>
 
 class Win32Window : public reimu::video::Window {
 public:
-    Win32Window(const reimu::Vector2i &size) {
+    Win32Window(WindowsDriver *driver, const reimu::Vector2i &size) {
         this->size = size;
+        this->driver = driver;
     }
 
     ~Win32Window() {
         DestroyWindow(handle);
+
+        driver->m_windows.erase(this);
     }
 
     void set_size(const reimu::Vector2i &size) override {
@@ -66,6 +70,7 @@ public:
     }
 
     reimu::Vector2i size;
+    WindowsDriver *driver;
     HWND handle;
     HINSTANCE hinstance;
 };

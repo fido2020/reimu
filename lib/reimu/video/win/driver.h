@@ -6,7 +6,10 @@
 
 #include <windows.h>
 
+#include <set>
+
 class WindowsDriver final : public reimu::video::Driver {
+    friend class Win32Window;
 public:
     reimu::video::Window *window_create(const reimu::Vector2i &size) override;
     
@@ -18,4 +21,7 @@ public:
     void finish() override;
 
     WNDCLASSEX wc;
+
+private:
+    std::set<reimu::video::Window *> m_windows;
 };
