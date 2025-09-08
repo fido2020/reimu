@@ -18,6 +18,18 @@ public:
         ::fclose(m_fd);
     }
 
+    Optional<uint8_t> get_byte() override {
+        uint8_t byte;
+        auto result = ::fgetc(m_fd);
+        if (result != EOF) {
+            byte = static_cast<uint8_t>(result);
+            m_off += 1;
+            return OPT_SOME(byte);
+        }
+
+        return OPT_NONE;
+    }
+
     Result<std::vector<uint8_t>, ReimuError> read(size_t up_to) override {
         std::vector<uint8_t> data{};
 

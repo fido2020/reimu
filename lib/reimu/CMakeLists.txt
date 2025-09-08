@@ -11,6 +11,7 @@ add_library(reimu
     lib.cpp
     unicode.cpp
     resource_manager.cpp
+    file.cpp
 
     config/config.cpp
     config/provider.cpp

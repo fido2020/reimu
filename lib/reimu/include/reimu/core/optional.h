@@ -20,6 +20,13 @@ class Optional {
 public:
     constexpr Optional() : m_has_some{false} {}
 
+    constexpr Optional(const Optional &other) {
+        if (other.m_has_some) {
+            new(&m_data) T(other.m_data);
+        }
+        m_has_some = other.m_has_some;
+    }
+
     constexpr Optional(T data)
         : m_data{std::move(data)}, m_has_some{true} {}
 
@@ -32,8 +39,21 @@ public:
         }
     }
 
+    template<typename U = std::remove_cv<T>>
+    T or_default(U &&def) {
+        return has_some() ? move_val() : static_cast<T>(std::forward<U>(def));
+    }
+
     constexpr inline bool has_some() const {
         return m_has_some;
+    }
+
+    constexpr inline operator bool() const {
+        return has_some();
+    }
+
+    constexpr T &&value() {
+        return std::move(m_data);
     }
 
     inline T &&ensure() {

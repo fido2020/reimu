@@ -1,3 +1,4 @@
+#include <reimu/core/optional.h>
 #include <reimu/core/unicode.h>
 
 #include <cstddef>
@@ -57,7 +58,7 @@ Result<std::u32string, InvalidUTF8Sequence> to_utf32(std::string_view utf8) {
     return OK(utf32);
 }
 
-Optional<uint32_t> single_utf8_to_utf32(const char *utf8, size_t n, size_t &consumed) {
+Optional<uint32_t> single_utf8_to_utf32(const void *utf8, size_t n, size_t &consumed) {
     uint8_t *data = (uint8_t *)utf8;
 
     uint32_t u8 = data[0];
@@ -95,6 +96,20 @@ Optional<uint32_t> single_utf8_to_utf32(const char *utf8, size_t n, size_t &cons
     }
 
     return OPT_NONE;
+}
+
+Optional<int> utf8_codepoint_num_bytes(uint8_t first_byte) {
+    if ((first_byte & 0x80) == 0) {
+        return OPT_SOME(1);
+    } else if ((first_byte & 0xe0) == 0xc0) {
+        return OPT_SOME(2);
+    } else if ((first_byte & 0xf0) == 0xe0) {
+        return OPT_SOME(3);
+    } else if ((first_byte & 0xf8) == 0xf0) {
+        return OPT_SOME(4);
+    } else {
+        return OPT_NONE;
+    }
 }
 
 }
