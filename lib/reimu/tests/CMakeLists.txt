@@ -9,4 +9,18 @@ add_executable(config
     config.cpp
 )
 
+target_link_libraries(config PUBLIC
+    reimu
+)
+
 add_test(config_test config)
+
+add_executable(markup
+    markup.cpp
+)
+
+target_link_libraries(markup PUBLIC
+    reimu
+)
+
+add_test(markup_test markup)

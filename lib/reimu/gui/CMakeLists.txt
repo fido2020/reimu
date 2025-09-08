@@ -1,4 +1,5 @@
 target_sources(reimu PRIVATE
+    markup/parser.cpp
     button.cpp
     compositor.cpp
     dialog.cpp
